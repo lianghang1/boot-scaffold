@@ -36,4 +36,16 @@ class StringUtilsTest {
         // 往返一致
         assertEquals("orderItemId", StringUtils.snakeToCamel(StringUtils.camelToSnake("orderItemId")));
     }
+
+    @Test
+    void formatPlaceholder() {
+        assertEquals("用户张三不存在: 42", StringUtils.format("用户{}不存在: {}", "张三", 42));
+        assertEquals("a-x-b", StringUtils.format("a-{}-b", "x", "y"));
+        assertEquals("a-xb", StringUtils.format("a-{}b", "x"));
+        assertEquals("no placeholder", StringUtils.format("no placeholder", "x"));
+        assertEquals("plain", StringUtils.format("plain"));
+        assertNull(StringUtils.format(null, "x"));
+        assertEquals("null 值", StringUtils.format("{} 值", (Object) null));
+        assertEquals("花括号{}保留", StringUtils.format("花括号{}保留"));
+    }
 }

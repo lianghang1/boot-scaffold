@@ -37,4 +37,27 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils {
         return text == null ? null
                 : CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, text);
     }
+
+    /**
+     * {@code {}} 占位符格式化（顺序替换，与 hutool StrUtil.format / SLF4J 同风格）：
+     * {@code format("用户{}不存在: {}", "张三", 42L) → "用户张三不存在: 42"}。
+     *
+     * <p>占位符多于参数时多余占位符原样保留；参数多于占位符时多余参数忽略。
+     * 与 JDK {@code MessageFormat} 的区别：不解析单引号/日期模式，纯文本替换。</p>
+     */
+    public static String format(String template, Object... args) {
+        if (template == null || template.isEmpty() || args == null || args.length == 0) {
+            return template;
+        }
+        StringBuilder sb = new StringBuilder(template.length() + args.length * 8);
+        int argIndex = 0;
+        int from = 0;
+        int idx;
+        while (argIndex < args.length && (idx = template.indexOf("{}", from)) >= 0) {
+            sb.append(template, from, idx).append(args[argIndex++]);
+            from = idx + 2;
+        }
+        sb.append(template, from, template.length());
+        return sb.toString();
+    }
 }

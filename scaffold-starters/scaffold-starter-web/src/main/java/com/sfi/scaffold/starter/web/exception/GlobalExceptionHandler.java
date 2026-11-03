@@ -13,8 +13,10 @@ import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import javax.validation.ConstraintViolationException;
 
@@ -62,6 +64,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<R<Void>> handleUnreadable(HttpMessageNotReadableException e) {
         log.warn("[request] 请求体不可读: {}", e.getMessage());
         return build(GlobalErrorCode.BAD_REQUEST, "请求体格式错误");
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<R<Void>> handleMissingParam(MissingServletRequestParameterException e) {
+        log.warn("[request] 缺失请求参数: {}", e.getParameterName());
+        return build(GlobalErrorCode.BAD_REQUEST, "缺失请求参数: " + e.getParameterName());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<R<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        log.warn("[request] 参数类型错误: {}={}", e.getName(), e.getValue());
+        return build(GlobalErrorCode.BAD_REQUEST, "参数类型错误: " + e.getName());
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)

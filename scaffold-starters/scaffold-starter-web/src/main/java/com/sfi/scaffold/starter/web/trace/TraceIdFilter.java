@@ -3,6 +3,7 @@ package com.sfi.scaffold.starter.web.trace;
 import com.sfi.scaffold.common.constant.TraceConstants;
 import com.sfi.scaffold.common.result.R;
 import com.sfi.scaffold.common.util.IpUtils;
+import com.sfi.scaffold.common.util.ServletUtils;
 import com.sfi.scaffold.starter.ip.IpRegionUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +64,8 @@ public class TraceIdFilter extends OncePerRequestFilter {
         try {
             logAccessStart(request);
             filterChain.doFilter(request, response);
+        } catch (Exception e) {
+            ServletUtils.writeError(response, e);
         } finally {
             MDC.remove(R.TRACE_ID_KEY);
         }

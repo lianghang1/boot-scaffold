@@ -31,6 +31,15 @@ public class BizException extends RuntimeException {
         this.errorCode = errorCode;
     }
 
+    /**
+     * {@code {}} 占位符文案：{@code new BizException(code, "用户{}不存在", name)}。
+     */
+    public BizException(ErrorCode errorCode, String message, Object... args) {
+        super(message == null ? null
+                : com.sfi.scaffold.common.util.StringUtils.format(message, args));
+        this.errorCode = errorCode;
+    }
+
     public ErrorCode getErrorCode() {
         return errorCode;
     }
@@ -43,5 +52,10 @@ public class BizException extends RuntimeException {
     /** 快捷抛出（自定义文案）。 */
     public static BizException of(ErrorCode errorCode, String message) {
         return new BizException(errorCode, message);
+    }
+
+    /** 快捷抛出（{@code {}} 占位符文案）。 */
+    public static BizException of(ErrorCode errorCode, String message, Object... args) {
+        return new BizException(errorCode, message, args);
     }
 }

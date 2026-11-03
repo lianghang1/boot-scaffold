@@ -1,5 +1,6 @@
 package com.sfi.scaffold.starter.web.config;
 
+import com.sfi.scaffold.common.constant.FilterOrder;
 import com.sfi.scaffold.common.util.CollUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
@@ -109,7 +110,7 @@ public class WebAutoConfiguration {
         FilterRegistrationBean<TraceIdFilter> registration =
                 new FilterRegistrationBean<>(new TraceIdFilter(
                         properties.isAccessLogEnabled() && properties.isAccessLogStartLine()));
-        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        registration.setOrder(FilterOrder.TRACE_ID);
         registration.addUrlPatterns("/*");
         registration.setName("traceIdFilter");
         return registration;
@@ -121,7 +122,7 @@ public class WebAutoConfiguration {
     public FilterRegistrationBean<XssFilter> xssFilterRegistration(WebProperties properties) {
         FilterRegistrationBean<XssFilter> registration =
                 new FilterRegistrationBean<>(new XssFilter(properties.getXss().getExcludeUrls()));
-        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 10);
+        registration.setOrder(FilterOrder.XSS);
         registration.addUrlPatterns("/*");
         registration.setName("xssFilter");
         return registration;

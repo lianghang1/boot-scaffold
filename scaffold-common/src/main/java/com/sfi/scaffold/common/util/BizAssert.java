@@ -32,6 +32,13 @@ public final class BizAssert {
         }
     }
 
+    /** 条件不成立时抛出指定错误码 + {@code {}} 占位符文案的业务异常。 */
+    public static void isTrue(boolean expression, ErrorCode errorCode, String message, Object... args) {
+        if (!expression) {
+            throw new BizException(errorCode, message, args);
+        }
+    }
+
     /** 对象为 null 时抛出业务异常（默认 1000 请求参数错误）。 */
     public static <T> T notNull(T object, ErrorCode errorCode) {
         if (object == null) {
@@ -48,10 +55,26 @@ public final class BizAssert {
         return object;
     }
 
+    /** 对象为 null 时抛出业务异常 + {@code {}} 占位符文案。 */
+    public static <T> T notNull(T object, ErrorCode errorCode, String message, Object... args) {
+        if (object == null) {
+            throw new BizException(errorCode, message, args);
+        }
+        return object;
+    }
+
     /** 字符串空白（null/空串/纯空白）时抛出业务异常 + 自定义文案。 */
     public static String notBlank(String text, ErrorCode errorCode, String message) {
         if (StringUtils.isBlank(text)) {
             throw new BizException(errorCode, message);
+        }
+        return text;
+    }
+
+    /** 字符串空白（null/空串/纯空白）时抛出业务异常 + {@code {}} 占位符文案。 */
+    public static String notBlank(String text, ErrorCode errorCode, String message, Object... args) {
+        if (StringUtils.isBlank(text)) {
+            throw new BizException(errorCode, message, args);
         }
         return text;
     }
@@ -70,6 +93,13 @@ public final class BizAssert {
     public static void param(boolean expression, String message) {
         if (!expression) {
             throw new BizException(GlobalErrorCode.BAD_REQUEST, message);
+        }
+    }
+
+    /** 参数类断言快捷方法 + {@code {}} 占位符文案。 */
+    public static void param(boolean expression, String message, Object... args) {
+        if (!expression) {
+            throw new BizException(GlobalErrorCode.BAD_REQUEST, message, args);
         }
     }
 }

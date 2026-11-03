@@ -16,6 +16,12 @@
     <description>公共地基：全局常量 / 统一响应 / 错误码 / 异常体系 / 域工具类（excel/json/mask/ip 等，纯工具层非 starter）</description>
 
     <dependencies>
+        <!-- ServletUtils 测试：MockHttpServletResponse 依赖 spring-web（仅测试期） -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- 仅 slf4j-api：R 内自动携带 traceId 需要 -->
         <dependency>
             <groupId>org.slf4j</groupId>

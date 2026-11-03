@@ -16,6 +16,11 @@
     <description>文件存储：封装 x-file-storage 2.3.0，统一上传/下载接口，平台配置化切换</description>
 
     <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
         <!-- 聚合器类库：本身已聚合 30+ 存储平台，封装它 = 收口能力（归属 framework 层） -->
         <dependency>
             <groupId>org.dromara.x-file-storage</groupId>
