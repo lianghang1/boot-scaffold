@@ -84,7 +84,7 @@
             </dependency>
             <dependency>
                 <groupId>com.sfi.scaffold</groupId>
-                <artifactId>scaffold-starter-search</artifactId>
+                <artifactId>scaffold-starter-query</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -271,7 +271,7 @@
                 <version>${xfilestorage.version}</version>
             </dependency>
 
-            <!-- Bean Searcher：starter-search 声明式动态检索（JDK8 兼容，与 JPA 正交共存） -->
+            <!-- Bean Searcher：starter-query 声明式动态检索（JDK8 兼容，与 JPA 正交共存） -->
             <dependency>
                 <groupId>cn.zhxu</groupId>
                 <artifactId>bean-searcher-boot-starter</artifactId>

@@ -14,7 +14,7 @@ boot-scaffold/
     ├── starter-log           日志基线
     ├── starter-ip            IP 归属地解析
     ├── starter-data-jpa      数据访问：BaseEntity / 雪花 ID / 乐观锁 / 多数据源 @TargetDataSource
-    ├── starter-search        动态检索（Bean Searcher 封装）
+    ├── starter-query         动态检索（Bean Searcher 封装）
     ├── starter-security      认证鉴权：token 会话(Redis) / 三入口安全链 / openapi 签名
     ├── starter-cache         Caffeine L1 + Redis L2 两级缓存
     ├── starter-redis         Redis 客户端封装
