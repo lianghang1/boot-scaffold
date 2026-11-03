@@ -5,6 +5,7 @@ import cn.zhxu.bs.MapSearcher;
 import cn.zhxu.bs.boot.BeanSearcherAutoConfiguration;
 import cn.zhxu.bs.implement.BaseSearcher;
 import com.sfi.scaffold.query.QueryUtilsX;
+import com.sfi.scaffold.query.QueryInterceptor;
 import com.sfi.scaffold.query.plan.QueryPlanRegistryX;
 import com.sfi.scaffold.query.plan.ScaffoldMetaResolver;
 import com.sfi.scaffold.query.plan.annotation.QueryPlanX;
@@ -37,7 +38,7 @@ import java.util.Set;
  * @author lianghang
  */
 @AutoConfiguration(after = BeanSearcherAutoConfiguration.class)
-@ConditionalOnProperty(name = "scaffold.search.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "scaffold.query.enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(QueryProperties.class)
 public class QueryAutoConfiguration {
 
@@ -51,8 +52,10 @@ public class QueryAutoConfiguration {
 
     @Bean
     public QueryUtilsInitializer queryUtilsInitializer(BeanSearcher beanSearcher, MapSearcher mapSearcher,
-                                                       org.springframework.beans.factory.ObjectProvider<org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate> namedJdbc) {
-        return new QueryUtilsInitializer(beanSearcher, mapSearcher, namedJdbc.getIfAvailable());
+                                                       QueryProperties properties,
+                                                       org.springframework.beans.factory.ObjectProvider<QueryInterceptor> interceptors,
+                                                       org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate namedJdbc) {
+        return new QueryUtilsInitializer(beanSearcher, mapSearcher, properties, interceptors, namedJdbc);
     }
 
     @Bean
@@ -76,7 +79,7 @@ public class QueryAutoConfiguration {
      * {@link FixedFilterParamFilter} 注入的 {@code _op} / {@code _ic} key 依赖此风格。
      */
     @Bean
-    public static org.springframework.beans.factory.config.BeanFactoryPostProcessor searchParamStyleDefaults() {
+    public static org.springframework.beans.factory.config.BeanFactoryPostProcessor paramStyleDefaults() {
         return beanFactory -> {
             if (beanFactory instanceof org.springframework.beans.factory.config.ConfigurableListableBeanFactory) {
                 org.springframework.core.env.ConfigurableEnvironment env =
@@ -84,7 +87,7 @@ public class QueryAutoConfiguration {
                 java.util.Map<String, Object> defaults = new java.util.HashMap<>();
                 defaults.put("bean-searcher.params.separator", "_");
                 env.getPropertySources().addLast(
-                        new org.springframework.core.env.MapPropertySource("scaffoldSearchParamDefaults", defaults));
+                        new org.springframework.core.env.MapPropertySource("scaffoldQueryParamDefaults", defaults));
             }
         };
     }
@@ -105,13 +108,18 @@ public class QueryAutoConfiguration {
     }
 
     /**
-     * 初始化 QueryUtilsX 静态门面。
+     * 初始化 QueryUtilsX 静态门面（含收口配置与拦截器）。
      */
     static class QueryUtilsInitializer {
 
         QueryUtilsInitializer(BeanSearcher beanSearcher, MapSearcher mapSearcher,
+                              QueryProperties properties,
+                              org.springframework.beans.factory.ObjectProvider<QueryInterceptor> interceptors,
                               org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate namedJdbc) {
             QueryUtilsX.configure(beanSearcher, mapSearcher);
+            QueryUtilsX.configure(properties);
+            QueryUtilsX.configureInterceptors(interceptors.orderedStream()
+                    .collect(java.util.stream.Collectors.toList()));
             if (namedJdbc != null) {
                 QueryUtilsX.configureNative(namedJdbc);
             }

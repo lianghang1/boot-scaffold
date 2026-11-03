@@ -16,6 +16,10 @@
     <description>动态检索：Bean Searcher 底座 + SearchFilter/QueryUtils 门面（同事务、QueryPlan 联表计划）</description>
 
     <dependencies>
+        <dependency>
+            <groupId>com.sfi.scaffold</groupId>
+            <artifactId>scaffold-common</artifactId>
+        </dependency>
         <!-- Bean Searcher：参数驱动动态检索引擎（SpringSqlExecutor 默认感知 Spring 事务） -->
         <dependency>
             <groupId>cn.zhxu</groupId>

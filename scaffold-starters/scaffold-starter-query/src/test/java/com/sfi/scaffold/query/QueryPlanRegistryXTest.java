@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
-        "scaffold.search.plan-packages=com.sfi.scaffold.query.planpck"
+        "scaffold.query.plan-packages=com.sfi.scaffold.query.planpck"
 })
 class QueryPlanRegistryXTest {
 
