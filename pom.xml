@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.sfi.scaffold</groupId>
+        <artifactId>scaffold-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>scaffold-parent/pom.xml</relativePath>
+    </parent>
+
+    <groupId>com.sfi.scaffold</groupId>
+    <artifactId>scaffold</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>scaffold</name>
+    <description>JDK8 Spring Boot 脚手架（多模块聚合）：properties/dependencyManagement/插件统一继承自 scaffold-parent，
+        外部项目也以 scaffold-parent 为父——框架与项目共享同一套版本与构建基线</description>
+
+    <modules>
+        <module>scaffold-parent</module>
+        <module>scaffold-dependencies</module>
+        <module>scaffold-common</module>
+        <module>scaffold-starters</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <!-- 构建护栏：依赖纪律机器强制，与 ArchUnit 的代码规约同一哲学 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>guard-dependency-discipline</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <!-- 同一三方库只允许一个版本：防止 BOM 之外漂移出第二版本 -->
+                                <dependencyConvergence/>
+                                <!-- 黑名单依赖：1.x log4j 已停维且漏洞成名史悠久，slf4j 1.x 桥接用 jcl-over/log4j-over -->
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>log4j:log4j</exclude>
+                                        <exclude>ch.qos.logback:logback-classic:[0,1.1]</exclude>
+                                        <exclude>org.slf4j:slf4j-log4j12</exclude>
+                                    </excludes>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- 覆盖率：只出报告不设门禁，target/site/jacoco/index.html -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <!-- data-jpa 的 TTL 依赖带签名文件，jacoco 干掉签名校验干扰 -->
+                    <excludes>
+                        <exclude>**/*Test*</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
