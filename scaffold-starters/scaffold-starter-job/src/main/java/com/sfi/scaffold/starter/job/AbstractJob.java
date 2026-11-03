@@ -1,8 +1,6 @@
 package com.sfi.scaffold.starter.job;
 
 import com.sfi.scaffold.common.constant.TraceConstants;
-import com.sfi.scaffold.starter.security.identity.LoginContext;
-import com.sfi.scaffold.starter.security.identity.LoginUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -15,9 +13,7 @@ import java.util.UUID;
  * final run() 子类不可绕过。
  *
  * <p>上下文自动填充：执行前写入任务专属 traceId（{@code job-{jobKey}-xxx}，与请求 traceId
- * 同 key 串联日志）并以系统身份（{@link LoginUser#system}）填充 {@link LoginContext}——
- * 任务内业务代码 {@code LoginContext.current()} 直接可用，审计字段自动落 system；
- * TTL 底座保证任务内部再提交的子线程同样可见。finally 强制清理，防线程复用串号。</p>
+ * 同 key 串联日志），finally 强制清理，防线程复用串号。</p>
  */
 public abstract class AbstractJob {
 
@@ -39,7 +35,6 @@ public abstract class AbstractJob {
         String lockHolder = null;
         MDC.put(TraceConstants.TRACE_ID_KEY,
                 "job-" + metadata.jobKey + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8));
-        LoginContext.set(LoginUser.system(metadata.jobName));
         try {
             if (metadata.lockLeaseSeconds > 0 && recorder != null) {
                 lockHolder = recorder.tryLock("job:" + metadata.jobKey, 0, metadata.lockLeaseSeconds);
@@ -72,7 +67,6 @@ public abstract class AbstractJob {
             if (lockHolder != null && recorder != null) {
                 recorder.unlock("job:" + metadata.jobKey, lockHolder);
             }
-            LoginContext.clear();
             MDC.remove(TraceConstants.TRACE_ID_KEY);
         }
     }

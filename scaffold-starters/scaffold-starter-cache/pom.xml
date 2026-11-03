@@ -27,6 +27,8 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
+            <!-- 可选：L2 为 Redis，无 Redis 时退化为纯 Caffeine 本地缓存 -->
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
