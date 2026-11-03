@@ -35,6 +35,7 @@ public abstract class AbstractJob {
         JobContext ctx = new JobContext();
         ctx.setJobName(metadata.jobName);
         ctx.setFireTime(java.time.LocalDateTime.now());
+        ctx.setParams(this.params);
         String lockHolder = null;
         MDC.put(TraceConstants.TRACE_ID_KEY,
                 "job-" + metadata.jobKey + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8));
@@ -78,6 +79,15 @@ public abstract class AbstractJob {
 
     /** 子类唯一必须实现：业务逻辑 */
     protected abstract void doExecute(JobContext context);
+
+    // ---------- 任务参数（由 JobRegistrar 注册时从配置解析注入；外部引擎在每次触发前注入） ----------
+
+    private volatile java.util.Map<String, String> params = java.util.Collections.emptyMap();
+
+    /** 框架内部使用：挂载任务参数，run() 时透传给 JobContext */
+    public void attachParams(java.util.Map<String, String> params) {
+        this.params = params == null ? java.util.Collections.emptyMap() : params;
+    }
 
     // ---------- 可覆写钩子 ----------
 

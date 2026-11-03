@@ -10,6 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.ApplicationContext;
+import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -100,6 +102,7 @@ public class JobRegistrar implements SmartInitializingSingleton {
                     log.info("[job] {} 已下线（enabled=false，来源 {}）", metadata.jobName, source);
                     continue;
                 }
+                job.attachParams(resolveParams(jobKey));
                 schedule(job, jobKey, cron);
                 registered++;
                 log.info("[job] 注册任务: {} cron={} (来源: {})", metadata.jobName, cron, source);
@@ -176,6 +179,13 @@ public class JobRegistrar implements SmartInitializingSingleton {
     /** 执行指标：委托 JobMetrics（micrometer 在场时打点，否则 noop 静默） */
     private void recordMetrics(AbstractJob job, String outcome, long costMillis) {
         jobMetrics.record(job.metadata().jobKey, outcome, costMillis);
+    }
+
+    /** 解析任务参数：scaffold.job.jobs.<jobKey>.params（未配置返回空 Map） */
+    private Map<String, String> resolveParams(String jobKey) {
+        return Binder.get(environment)
+                .bind("scaffold.job.jobs." + jobKey + ".params", Bindable.mapOf(String.class, String.class))
+                .orElse(java.util.Collections.emptyMap());
     }
 
     private void schedule(AbstractJob job, String jobKey, String cron) {

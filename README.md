@@ -10,7 +10,7 @@ boot-scaffold/
 ├── scaffold-dependencies     BOM：全部依赖版本唯一出口
 ├── scaffold-common           公共工具（异常/JSON/日期/枚举等）
 └── scaffold-starters/        能力积木，按需依赖，自动装配
-    ├── starter-web           Web 基础：traceId / 全局异常 / 访问日志 / Jackson / knife4j
+    ├── starter-web           Web 基础：traceId / 全局异常 / 访问日志 / Jackson
     ├── starter-log           日志基线
     ├── starter-ip            IP 归属地解析
     ├── starter-data-jpa      数据访问：BaseEntity / 雪花 ID / 乐观锁 / 多数据源 @TargetDataSource
