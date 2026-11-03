@@ -1,7 +1,7 @@
 package com.sfi.scaffold.starter.security.policy;
 
 import com.sfi.scaffold.starter.security.config.SecurityProperties;
-import io.micrometer.core.instrument.MeterRegistry;
+import com.sfi.scaffold.common.metrics.CounterMetrics;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.time.Duration;
@@ -29,8 +29,8 @@ public class LoginFailureGuard {
     private final StringRedisTemplate redisTemplate;
     private final SecurityProperties.PasswordPolicy policy;
     private final SecurityProperties.IpGuard ipGuard;
-    /** 可选指标注册表：null 表示本环境未启用可观测性 */
-    private final MeterRegistry meterRegistry;
+    /** 指标门面（条件装配绑定 micrometer 或 noop，隔离类加载） */
+    private final CounterMetrics counterMetrics;
 
     public LoginFailureGuard(StringRedisTemplate redisTemplate,
                              SecurityProperties.PasswordPolicy policy) {
@@ -40,17 +40,17 @@ public class LoginFailureGuard {
     public LoginFailureGuard(StringRedisTemplate redisTemplate,
                              SecurityProperties.PasswordPolicy policy,
                              SecurityProperties.IpGuard ipGuard) {
-        this(redisTemplate, policy, ipGuard, null);
+        this(redisTemplate, policy, ipGuard, CounterMetrics.NOOP);
     }
 
     public LoginFailureGuard(StringRedisTemplate redisTemplate,
                              SecurityProperties.PasswordPolicy policy,
                              SecurityProperties.IpGuard ipGuard,
-                             MeterRegistry meterRegistry) {
+                             CounterMetrics counterMetrics) {
         this.redisTemplate = redisTemplate;
         this.policy = policy;
         this.ipGuard = ipGuard != null ? ipGuard : new SecurityProperties.IpGuard();
-        this.meterRegistry = meterRegistry;
+        this.counterMetrics = counterMetrics;
     }
 
     /** 账号是否已被临时锁定 */
@@ -102,11 +102,9 @@ public class LoginFailureGuard {
         return count == null ? 0 : count;
     }
 
-    /** 登录失败指标上报：registry 缺席时静默。 */
+    /** 登录失败指标上报（micrometer 在场时打点，否则 noop 静默） */
     private void recordMetric(String dimension) {
-        if (meterRegistry != null) {
-            meterRegistry.counter(FAIL_METRIC, "dimension", dimension).increment();
-        }
+        counterMetrics.increment(FAIL_METRIC, "dimension", dimension);
     }
 
     private String key(String accountNo) {

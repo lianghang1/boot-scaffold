@@ -1,6 +1,7 @@
 package com.sfi.scaffold.starter.job.config;
 
 import com.sfi.scaffold.starter.job.JobConfigProvider;
+import com.sfi.scaffold.starter.job.JobMetrics;
 import com.sfi.scaffold.starter.job.JpaJobRunLogSink;
 import com.sfi.scaffold.starter.job.JobRunLogRepository;
 import com.sfi.scaffold.starter.job.JobRunLogSink;
@@ -66,14 +67,14 @@ public class JobAutoConfiguration {
                                      ObjectProvider<JobRunLogSink> runLogSink,
                                      ObjectProvider<RedisLockUtil> lockUtil,
                                      ObjectProvider<JobConfigProvider> configProvider,
-                                     ObjectProvider<io.micrometer.core.instrument.MeterRegistry> meterRegistry) {
+                                     JobMetrics jobMetrics) {
         if ("none".equalsIgnoreCase(properties.getEngine())) {
             // 外部调度平台接管：不注册，运行时管理走平台自带控制台
             return null;
         }
         return new JobRegistrar(applicationContext, environment, taskScheduler,
                 runLogSink.getIfAvailable(), lockUtil.getIfAvailable(),
-                configProvider.getIfAvailable(), meterRegistry.getIfAvailable());
+                configProvider.getIfAvailable(), jobMetrics);
     }
 
     /**
@@ -92,6 +93,28 @@ public class JobAutoConfiguration {
                                            ObjectProvider<TransactionTemplate> transactionTemplate) {
             return new JpaJobRunLogSink(runLogRepository.getIfAvailable(),
                     transactionTemplate.getIfAvailable());
+        }
+    }
+
+    /** micrometer 在场时绑定真实打点；嵌套类经 ASM 元数据判定条件，类加载安全 */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "io.micrometer.core.instrument.MeterRegistry")
+    static class MicrometerJobMetricsConfiguration {
+
+        @Bean
+        JobMetrics micrometerJobMetrics(ObjectProvider<io.micrometer.core.instrument.MeterRegistry> registry) {
+            return new com.sfi.scaffold.starter.job.MicrometerJobMetrics(registry.getIfAvailable());
+        }
+    }
+
+    /** 兜底空实现：micrometer 不在场（纯 job 形态）时埋点静默 */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnMissingBean(JobMetrics.class)
+    static class DefaultJobMetricsConfiguration {
+
+        @Bean
+        JobMetrics noopJobMetrics() {
+            return JobMetrics.NOOP;
         }
     }
 }
