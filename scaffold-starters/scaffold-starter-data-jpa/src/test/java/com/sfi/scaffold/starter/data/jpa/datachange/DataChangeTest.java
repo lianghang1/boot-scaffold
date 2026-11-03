@@ -79,7 +79,7 @@ class DataChangeTest {
         TrackedRecord saved = trackedRepository.save(new TrackedRecord("张三", 20));
         collector.clear();
 
-        TrackedRecord loaded = trackedRepository.findById(saved.getId()).orElseThrow();
+        TrackedRecord loaded = trackedRepository.findById(saved.getId()).orElseThrow(AssertionError::new);
         loaded.setName("李四");
         trackedRepository.save(loaded);
 

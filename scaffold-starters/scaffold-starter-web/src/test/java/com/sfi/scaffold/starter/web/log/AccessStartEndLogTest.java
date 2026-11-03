@@ -77,7 +77,7 @@ class AccessStartEndLogTest {
         // MDC 已就绪：START 事件携带 traceId，与响应头一致
         assertThat(appender.list.stream()
                 .filter(e -> e.getFormattedMessage().contains("START"))
-                .findFirst().orElseThrow().getMDCPropertyMap().get("traceId"))
+                .findFirst().orElseThrow(AssertionError::new).getMDCPropertyMap().get("traceId"))
                 .isNotBlank();
     }
 
