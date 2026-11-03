@@ -8,118 +8,21 @@ import java.util.List;
 /**
  * 安全部配置项，前缀 {@code scaffold.security}。
  *
- * <p>三条安全链与过滤器的白名单都从这里读取，是白名单的唯一出处，杜绝多处配置漂移；
- * token TTL、续期阈值、同端互斥等会话行为也集中在此调参。</p>
+ * <p>边界链只认两类放行来源：代码里的 {@code @Anonymous} 注解（意图跟代码走）
+ * 与本配置的 {@code permit-urls}（兜底代码外路径：静态资源、actuator、
+ * 三方 jar 的接口）。其余请求一律 {@code authenticated()}，fail-closed。
+ * token 会话、防刷、验证码等认证组件的配置在各组件自己的前缀下。</p>
  *
  * @author lianghang
  */
 @ConfigurationProperties(prefix = "scaffold.security")
 public class SecurityProperties {
 
-    /** internal 链白名单（如登录接口），相对 /internal/** */
-    private List<String> internalWhitelist = new ArrayList<>();
+    /** 兜底白名单（ant 风格）：注解覆盖不到的路径，如 /actuator/**、/static/** */
+    private List<String> permitUrls = new ArrayList<>();
 
-    /** openapi 链白名单 */
-    private List<String> openapiWhitelist = new ArrayList<>();
-
-    /** online 链白名单（整链默认 permitAll，此配置仅用于过滤器跳过解析） */
-    private List<String> onlineWhitelist = new ArrayList<>();
-
-    /** token 会话 TTL（秒），默认 7 天 */
-    private long tokenTtlSeconds = 7 * 24 * 3600L;
-
-    /** 剩余有效期低于该百分比时自动续期 */
-    private int renewThresholdPercent = 20;
-
-    /** 同端互斥：登录是否踢掉同设备旧会话 */
-    private boolean exclusiveLogin = false;
-
-    /** openapi 时间戳窗口（秒，正负） */
-    private long openapiTimestampWindowSeconds = 300;
-
-    /** openapi 是否校验来源 IP 白名单（需 AppIdentity 提供） */
-    private boolean openapiIpWhitelistCheck = false;
-
-    /** 密码策略（JeeSite 密码安全思想：强度校验 + 连续失败锁定） */
+    /** 密码策略（强度校验 + 连续失败锁定） */
     private PasswordPolicy passwordPolicy = new PasswordPolicy();
-
-    /** 登录 IP 防护（防单 IP 撞库，与账号维度锁定互补） */
-    private IpGuard ipGuard = new IpGuard();
-
-    /** internal 登录图形验证码 */
-    private Captcha captcha = new Captcha();
-
-    public static class IpGuard {
-
-        /** 总开关；关闭后仅保留账号维度失败锁定 */
-        private boolean enabled = true;
-
-        /** 同 IP 窗口内登录失败上限，达到后拒绝该 IP 的账密登录 */
-        private int failLimit = 30;
-
-        /** 失败计数窗口（秒） */
-        private int windowSeconds = 600;
-
-        public boolean isEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
-
-        public int getFailLimit() {
-            return failLimit;
-        }
-
-        public void setFailLimit(int failLimit) {
-            this.failLimit = failLimit;
-        }
-
-        public int getWindowSeconds() {
-            return windowSeconds;
-        }
-
-        public void setWindowSeconds(int windowSeconds) {
-            this.windowSeconds = windowSeconds;
-        }
-    }
-
-    public static class Captcha {
-
-        /** 模式：off=不启用 | always=每次都要 | after_fail=连续失败 failThreshold 次后强制 */
-        private String mode = "after_fail";
-
-        /** after_fail 模式的触发阈值（连续失败次数） */
-        private int failThreshold = 3;
-
-        /** 验证码有效期（秒） */
-        private int ttlSeconds = 120;
-
-        public String getMode() {
-            return mode;
-        }
-
-        public void setMode(String mode) {
-            this.mode = mode;
-        }
-
-        public int getFailThreshold() {
-            return failThreshold;
-        }
-
-        public void setFailThreshold(int failThreshold) {
-            this.failThreshold = failThreshold;
-        }
-
-        public int getTtlSeconds() {
-            return ttlSeconds;
-        }
-
-        public void setTtlSeconds(int ttlSeconds) {
-            this.ttlSeconds = ttlSeconds;
-        }
-    }
 
     public static class PasswordPolicy {
 
@@ -168,91 +71,19 @@ public class SecurityProperties {
         }
     }
 
+    public List<String> getPermitUrls() {
+        return permitUrls;
+    }
+
+    public void setPermitUrls(List<String> permitUrls) {
+        this.permitUrls = permitUrls;
+    }
+
     public PasswordPolicy getPasswordPolicy() {
         return passwordPolicy;
     }
 
     public void setPasswordPolicy(PasswordPolicy passwordPolicy) {
         this.passwordPolicy = passwordPolicy;
-    }
-
-    public IpGuard getIpGuard() {
-        return ipGuard;
-    }
-
-    public void setIpGuard(IpGuard ipGuard) {
-        this.ipGuard = ipGuard;
-    }
-
-    public Captcha getCaptcha() {
-        return captcha;
-    }
-
-    public void setCaptcha(Captcha captcha) {
-        this.captcha = captcha;
-    }
-
-    public List<String> getInternalWhitelist() {
-        return internalWhitelist;
-    }
-
-    public void setInternalWhitelist(List<String> internalWhitelist) {
-        this.internalWhitelist = internalWhitelist;
-    }
-
-    public List<String> getOpenapiWhitelist() {
-        return openapiWhitelist;
-    }
-
-    public void setOpenapiWhitelist(List<String> openapiWhitelist) {
-        this.openapiWhitelist = openapiWhitelist;
-    }
-
-    public List<String> getOnlineWhitelist() {
-        return onlineWhitelist;
-    }
-
-    public void setOnlineWhitelist(List<String> onlineWhitelist) {
-        this.onlineWhitelist = onlineWhitelist;
-    }
-
-    public long getTokenTtlSeconds() {
-        return tokenTtlSeconds;
-    }
-
-    public void setTokenTtlSeconds(long tokenTtlSeconds) {
-        this.tokenTtlSeconds = tokenTtlSeconds;
-    }
-
-    public int getRenewThresholdPercent() {
-        return renewThresholdPercent;
-    }
-
-    public void setRenewThresholdPercent(int renewThresholdPercent) {
-        this.renewThresholdPercent = renewThresholdPercent;
-    }
-
-    public boolean isExclusiveLogin() {
-        return exclusiveLogin;
-    }
-
-    public void setExclusiveLogin(boolean exclusiveLogin) {
-        this.exclusiveLogin = exclusiveLogin;
-    }
-
-    public long getOpenapiTimestampWindowSeconds() {
-        return openapiTimestampWindowSeconds;
-    }
-
-    public void setOpenapiTimestampWindowSeconds(long openapiTimestampWindowSeconds) {
-        this.openapiTimestampWindowSeconds = openapiTimestampWindowSeconds;
-    }
-
-    public boolean isOpenapiIpWhitelistCheck() {
-        return openapiIpWhitelistCheck;
-    }
-
-    public void setOpenapiIpWhitelistCheck(boolean openapiIpWhitelistCheck) {
-        this.openapiIpWhitelistCheck = openapiIpWhitelistCheck;
     }
 }

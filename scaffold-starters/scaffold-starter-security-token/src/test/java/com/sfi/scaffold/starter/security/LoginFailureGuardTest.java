@@ -1,6 +1,7 @@
 package com.sfi.scaffold.starter.security;
 
 import com.sfi.scaffold.starter.security.config.SecurityProperties;
+import com.sfi.scaffold.starter.security.token.config.TokenProperties;
 import com.sfi.scaffold.starter.security.policy.LoginFailureGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +30,7 @@ class LoginFailureGuardTest {
     private StringRedisTemplate redisTemplate;
     private ValueOperations<String, String> valueOps;
     private SecurityProperties.PasswordPolicy policy;
-    private SecurityProperties.IpGuard ipGuard;
+    private TokenProperties.IpGuard ipGuard;
     private LoginFailureGuard guard;
 
     @BeforeEach
@@ -39,7 +40,7 @@ class LoginFailureGuardTest {
         valueOps = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
         policy = new SecurityProperties.PasswordPolicy();
-        ipGuard = new SecurityProperties.IpGuard();
+        ipGuard = new TokenProperties.IpGuard();
         guard = new LoginFailureGuard(redisTemplate, policy, ipGuard);
     }
 

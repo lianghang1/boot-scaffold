@@ -1,7 +1,7 @@
 package com.sfi.scaffold.starter.security;
 
 import com.sfi.scaffold.starter.security.captcha.CaptchaService;
-import com.sfi.scaffold.starter.security.config.SecurityProperties;
+import com.sfi.scaffold.starter.security.token.config.TokenProperties;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,7 +45,7 @@ class CaptchaServiceTest {
     }
 
     private CaptchaService newService(String mode) {
-        SecurityProperties.Captcha config = new SecurityProperties.Captcha();
+        TokenProperties.Captcha config = new TokenProperties.Captcha();
         config.setMode(mode);
         config.setFailThreshold(3);
         return new CaptchaService(redisTemplate, config);

@@ -1,7 +1,10 @@
-package com.sfi.scaffold.starter.security.filter;
+package com.sfi.scaffold.starter.security;
+
+import com.sfi.scaffold.starter.security.openapi.OpenApiSignFilter;
 
 import com.sfi.scaffold.common.exception.GlobalErrorCode;
-import com.sfi.scaffold.starter.security.config.SecurityProperties;
+import com.sfi.scaffold.starter.security.openapi.config.OpenApiProperties;
+import com.sfi.scaffold.starter.security.identity.IdentityContextSupport;
 import com.sfi.scaffold.starter.security.identity.LoginContext;
 import com.sfi.scaffold.starter.security.openapi.AppIdentity;
 import com.sfi.scaffold.starter.security.openapi.AppSecretProvider;
@@ -42,7 +45,7 @@ class OpenApiSignFilterTest {
     private AppSecretProvider secretProvider;
     private StringRedisTemplate redisTemplate;
     private ValueOperations<String, String> valueOps;
-    private SecurityProperties properties;
+    private OpenApiProperties properties;
     private OpenApiSignFilter filter;
 
     @BeforeEach
@@ -52,13 +55,13 @@ class OpenApiSignFilterTest {
         redisTemplate = mock(StringRedisTemplate.class);
         valueOps = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
-        properties = new SecurityProperties();
+        properties = new OpenApiProperties();
         filter = new OpenApiSignFilter(secretProvider, properties, redisTemplate);
     }
 
     @AfterEach
     void tearDown() {
-        AuthenticationSupport.clear();
+        IdentityContextSupport.clear();
     }
 
     private AppIdentity app() {

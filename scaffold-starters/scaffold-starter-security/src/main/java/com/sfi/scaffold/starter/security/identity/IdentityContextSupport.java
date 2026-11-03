@@ -1,33 +1,29 @@
-package com.sfi.scaffold.starter.security.filter;
+package com.sfi.scaffold.starter.security.identity;
 
-import com.sfi.scaffold.starter.security.identity.LoginContext;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.io.IOException;
+import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 /**
- * 各认证过滤器共用的装配与清理工具类。
- *
- * <p>负责「会话 → LoginContext + SecurityContext」的双轨装配（角色自动补 ROLE_ 前缀）、
- * finally 强制清理，以及统一错误 JSON 与 token 提取——抽取公共逻辑避免三条链各自为政。</p>
+ * 认证组件共用的身份装配工具：登录用户写入 LoginContext 与 SecurityContext
+ * 双轨、请求结束时强制清理、token 提取。token / openapi 等认证组件
+ * 认证成功后统一经本类归一化，授权层（PermissionInterceptor）只认 LoginContext。
  *
  * @author lianghang
  */
-final class AuthenticationSupport {
+public final class IdentityContextSupport {
 
-    private AuthenticationSupport() {
+    private IdentityContextSupport() {
     }
 
-    static void apply(com.sfi.scaffold.starter.security.token.SessionInfo session) {
-        com.sfi.scaffold.starter.security.identity.LoginUser user = session.toLoginUser();
+    /** 登录用户装入上下文：LoginContext + SecurityContext（角色自动补 ROLE_ 前缀）。 */
+    public static void applyUser(LoginUser user) {
         LoginContext.set(user);
-
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         Set<String> roles = user.getRoles();
         if (roles != null) {
@@ -48,22 +44,14 @@ final class AuthenticationSupport {
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
-    static void clear() {
+    /** 请求结束强制清理，防线程复用串号。 */
+    public static void clear() {
         LoginContext.clear();
         SecurityContextHolder.clearContext();
     }
 
-    static void writeJson(javax.servlet.http.HttpServletResponse response,
-                          com.sfi.scaffold.common.exception.ErrorCode errorCode) throws IOException {
-        response.setStatus(errorCode.getHttpStatus() == -1 ? 200 : errorCode.getHttpStatus());
-        response.setContentType(MediaType.APPLICATION_JSON_UTF8_VALUE);
-        response.getWriter().write(
-                "{\"code\":" + errorCode.getCode() + ",\"message\":\"" + errorCode.getMessage()
-                        + "\",\"traceId\":\"" + org.slf4j.MDC.get("traceId") + "\"}");
-        response.getWriter().flush();
-    }
-
-    static String extractToken(javax.servlet.http.HttpServletRequest request) {
+    /** token 提取：Authorization: Bearer xxx 优先，其次 X-Token。 */
+    public static String extractToken(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             return header.substring(7);

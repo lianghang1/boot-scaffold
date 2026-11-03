@@ -1,6 +1,6 @@
-package com.sfi.scaffold.starter.security.filter;
+package com.sfi.scaffold.starter.security.token.filter;
 
-import com.sfi.scaffold.starter.security.config.SecurityProperties;
+import com.sfi.scaffold.starter.security.identity.IdentityContextSupport;
 import com.sfi.scaffold.starter.security.token.SessionInfo;
 import com.sfi.scaffold.starter.security.token.TokenService;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -12,42 +12,36 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**
- * online 链的可选登录认证过滤器。
+ * token 会话认证过滤器：请求携带有效 token 则装入登录上下文，
+ * 无 token / token 无效一律静默继续链（授权段裁决，匿名路径与 token 校验解耦）。
  *
- * <p>带有效 token 则归一化身份（获得增强能力），匿名照常放行——
- * C 端接口允许游客访问，登录与否只影响数据可见范围。</p>
+ * <p>经 {@code ScaffoldSecurityCustomizer} 挂进边界链；finally 强制清理上下文，
+ * 防线程复用串号——认证态的生命周期严格限定在单次请求内。</p>
  *
  * @author lianghang
  */
-public class OnlineTokenFilter extends OncePerRequestFilter {
+public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
-    private final SecurityProperties properties;
 
-    public OnlineTokenFilter(TokenService tokenService, SecurityProperties properties) {
+    public TokenAuthenticationFilter(TokenService tokenService) {
         this.tokenService = tokenService;
-        this.properties = properties;
-    }
-
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        return properties.getOnlineWhitelist().contains(request.getRequestURI());
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
         try {
-            String token = AuthenticationSupport.extractToken(request);
+            String token = IdentityContextSupport.extractToken(request);
             if (token != null && !token.isEmpty()) {
                 SessionInfo session = tokenService.resolveWithRenew(token);
                 if (session != null) {
-                    AuthenticationSupport.apply(session);
+                    IdentityContextSupport.applyUser(session.toLoginUser());
                 }
             }
             chain.doFilter(request, response);
         } finally {
-            AuthenticationSupport.clear();
+            IdentityContextSupport.clear();
         }
     }
 }

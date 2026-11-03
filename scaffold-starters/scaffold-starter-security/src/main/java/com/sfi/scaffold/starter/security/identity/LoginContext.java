@@ -3,7 +3,7 @@ package com.sfi.scaffold.starter.security.identity;
 import com.alibaba.ttl.TransmittableThreadLocal;
 import com.sfi.scaffold.common.exception.BizException;
 import com.sfi.scaffold.common.exception.GlobalErrorCode;
-import com.sfi.scaffold.starter.data.jpa.audit.ScaffoldAuditorHolder;
+import org.springframework.util.ClassUtils;
 
 /**
  * 登录上下文——业务层获取当前身份的唯一入口。
@@ -19,6 +19,9 @@ import com.sfi.scaffold.starter.data.jpa.audit.ScaffoldAuditorHolder;
 public final class LoginContext {
 
     private static final TransmittableThreadLocal<LoginUser> HOLDER = new TransmittableThreadLocal<>();
+
+    private static final boolean AUDITOR_PRESENT = ClassUtils.isPresent(
+            "com.sfi.scaffold.starter.data.jpa.audit.ScaffoldAuditorHolder", LoginContext.class.getClassLoader());
 
     private LoginContext() {
     }
@@ -44,12 +47,24 @@ public final class LoginContext {
 
     public static void set(LoginUser user) {
         HOLDER.set(user);
-        // 同步审计人，createBy/updateBy 自动填充
-        ScaffoldAuditorHolder.set(String.valueOf(user.getAccountId()));
+        syncAuditor(user);
     }
 
     public static void clear() {
         HOLDER.remove();
-        ScaffoldAuditorHolder.clear();
+        clearAuditor();
+    }
+
+    /** 同步审计人（data-jpa 在场时 createBy/updateBy 自动填充）；JPA 缺席时静默跳过 */
+    private static void syncAuditor(LoginUser user) {
+        if (AUDITOR_PRESENT) {
+            com.sfi.scaffold.starter.data.jpa.audit.ScaffoldAuditorHolder.set(String.valueOf(user.getAccountId()));
+        }
+    }
+
+    private static void clearAuditor() {
+        if (AUDITOR_PRESENT) {
+            com.sfi.scaffold.starter.data.jpa.audit.ScaffoldAuditorHolder.clear();
+        }
     }
 }

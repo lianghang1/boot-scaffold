@@ -13,17 +13,12 @@
     <artifactId>scaffold-starter-security</artifactId>
     <packaging>jar</packaging>
     <name>scaffold-starter-security</name>
-    <description>三入口安全体系：internal(token 会话+RBAC) / openapi(HMAC 签名) / online(匿名+可选登录)</description>
+    <description>安全边界：单条 SecurityFilterChain，@Anonymous/yml 白名单/Customizer 扩展点/anyRequest authenticated 兜底</description>
 
     <dependencies>
         <dependency>
             <groupId>com.sfi.scaffold</groupId>
             <artifactId>scaffold-common</artifactId>
-        </dependency>
-        <!-- 计算型验证码：仅引 hutool 单模块（版本走 scaffold-dependencies），不用 hutool-all -->
-        <dependency>
-            <groupId>cn.hutool</groupId>
-            <artifactId>hutool-captcha</artifactId>
         </dependency>
         <!-- 可选埋点：observability 在场时上报登录失败指标，缺席时静默 -->
         <dependency>
@@ -34,6 +29,8 @@
         <dependency>
             <groupId>com.sfi.scaffold</groupId>
             <artifactId>scaffold-starter-data-jpa</artifactId>
+            <!-- 可选：仅 LoginContext 审计人同步（ScaffoldAuditorHolder），缺席时静默跳过 -->
+            <optional>true</optional>
         </dependency>
 
         <!-- 会话 JSON 序列化 -->
@@ -45,12 +42,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis</artifactId>
-            <!-- 可选：token/防刷/验证码基于 Redis，项目需要安全能力时自行引入 -->
-            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

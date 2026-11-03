@@ -1,6 +1,7 @@
 package com.sfi.scaffold.starter.security.policy;
 
 import com.sfi.scaffold.starter.security.config.SecurityProperties;
+import com.sfi.scaffold.starter.security.token.config.TokenProperties;
 import com.sfi.scaffold.common.metrics.CounterMetrics;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
@@ -28,7 +29,7 @@ public class LoginFailureGuard {
 
     private final StringRedisTemplate redisTemplate;
     private final SecurityProperties.PasswordPolicy policy;
-    private final SecurityProperties.IpGuard ipGuard;
+    private final TokenProperties.IpGuard ipGuard;
     /** 指标门面（条件装配绑定 micrometer 或 noop，隔离类加载） */
     private final CounterMetrics counterMetrics;
 
@@ -39,17 +40,17 @@ public class LoginFailureGuard {
 
     public LoginFailureGuard(StringRedisTemplate redisTemplate,
                              SecurityProperties.PasswordPolicy policy,
-                             SecurityProperties.IpGuard ipGuard) {
+                             TokenProperties.IpGuard ipGuard) {
         this(redisTemplate, policy, ipGuard, CounterMetrics.NOOP);
     }
 
     public LoginFailureGuard(StringRedisTemplate redisTemplate,
                              SecurityProperties.PasswordPolicy policy,
-                             SecurityProperties.IpGuard ipGuard,
+                             TokenProperties.IpGuard ipGuard,
                              CounterMetrics counterMetrics) {
         this.redisTemplate = redisTemplate;
         this.policy = policy;
-        this.ipGuard = ipGuard != null ? ipGuard : new SecurityProperties.IpGuard();
+        this.ipGuard = ipGuard != null ? ipGuard : new TokenProperties.IpGuard();
         this.counterMetrics = counterMetrics;
     }
 

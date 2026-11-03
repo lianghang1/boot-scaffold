@@ -28,7 +28,9 @@
         <!-- 握手鉴权复用 token 会话 -->
         <dependency>
             <groupId>com.sfi.scaffold</groupId>
-            <artifactId>scaffold-starter-security</artifactId>
+            <artifactId>scaffold-starter-security-token</artifactId>
+            <!-- 可选：token 认证组件在场时启用握手鉴权，缺席时握手不设防 -->
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

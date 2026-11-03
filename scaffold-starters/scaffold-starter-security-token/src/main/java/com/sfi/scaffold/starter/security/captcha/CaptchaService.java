@@ -4,7 +4,7 @@ import com.sfi.scaffold.common.util.StringUtils;
 import cn.hutool.captcha.CaptchaUtil;
 import cn.hutool.captcha.GifCaptcha;
 import cn.hutool.captcha.generator.MathGenerator;
-import com.sfi.scaffold.starter.security.config.SecurityProperties;
+import com.sfi.scaffold.starter.security.token.config.TokenProperties;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.time.Duration;
@@ -35,9 +35,9 @@ public class CaptchaService {
     private static final MathGenerator MATH = new MathGenerator();
 
     private final StringRedisTemplate redisTemplate;
-    private final SecurityProperties.Captcha config;
+    private final TokenProperties.Captcha config;
 
-    public CaptchaService(StringRedisTemplate redisTemplate, SecurityProperties.Captcha config) {
+    public CaptchaService(StringRedisTemplate redisTemplate, TokenProperties.Captcha config) {
         this.redisTemplate = redisTemplate;
         this.config = config;
     }
