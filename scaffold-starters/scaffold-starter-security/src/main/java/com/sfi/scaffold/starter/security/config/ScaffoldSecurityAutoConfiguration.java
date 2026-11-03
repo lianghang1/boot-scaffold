@@ -64,10 +64,9 @@ public class ScaffoldSecurityAutoConfiguration {
     @ConditionalOnMissingBean(com.sfi.scaffold.starter.security.policy.LoginFailureGuard.class)
     public com.sfi.scaffold.starter.security.policy.LoginFailureGuard loginFailureGuard(
             StringRedisTemplate redisTemplate, SecurityProperties properties,
-            org.springframework.beans.factory.ObjectProvider<io.micrometer.core.instrument.MeterRegistry> meterRegistry) {
+            com.sfi.scaffold.common.metrics.CounterMetrics counterMetrics) {
         return new com.sfi.scaffold.starter.security.policy.LoginFailureGuard(
-                redisTemplate, properties.getPasswordPolicy(), properties.getIpGuard(),
-                meterRegistry.getIfAvailable());
+                redisTemplate, properties.getPasswordPolicy(), properties.getIpGuard(), counterMetrics);
     }
 
     /** 图形验证码（Hutool + Redis 一次性），internal 登录防机器撞库 */
@@ -207,5 +206,28 @@ public class ScaffoldSecurityAutoConfiguration {
                 registry.addInterceptor(permissionInterceptor).addPathPatterns("/**");
             }
         };
+    }
+
+    /** micrometer 在场时绑定真实打点；嵌套类经 ASM 元数据判定条件，类加载安全 */
+    @org.springframework.context.annotation.Configuration(proxyBeanMethods = false)
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnClass(name = "io.micrometer.core.instrument.MeterRegistry")
+    static class MicrometerCounterMetricsConfiguration {
+
+        @org.springframework.context.annotation.Bean
+        com.sfi.scaffold.common.metrics.CounterMetrics micrometerCounterMetrics(
+                org.springframework.beans.factory.ObjectProvider<io.micrometer.core.instrument.MeterRegistry> registry) {
+            return new com.sfi.scaffold.common.metrics.MicrometerCounterMetrics(registry.getIfAvailable());
+        }
+    }
+
+    /** 兜底空实现：micrometer 不在场时静默 */
+    @org.springframework.context.annotation.Configuration(proxyBeanMethods = false)
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(com.sfi.scaffold.common.metrics.CounterMetrics.class)
+    static class DefaultCounterMetricsConfiguration {
+
+        @org.springframework.context.annotation.Bean
+        com.sfi.scaffold.common.metrics.CounterMetrics noopCounterMetrics() {
+            return com.sfi.scaffold.common.metrics.CounterMetrics.NOOP;
+        }
     }
 }

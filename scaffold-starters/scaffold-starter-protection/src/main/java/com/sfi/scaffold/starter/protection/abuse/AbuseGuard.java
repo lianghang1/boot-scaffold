@@ -1,6 +1,6 @@
 package com.sfi.scaffold.starter.protection.abuse;
 
-import io.micrometer.core.instrument.MeterRegistry;
+import com.sfi.scaffold.common.metrics.CounterMetrics;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.time.Duration;
@@ -32,16 +32,16 @@ public class AbuseGuard {
     private static final String REJECT_METRIC = com.sfi.scaffold.common.constant.MetricsNames.ABUSE_REJECTED;
 
     private final StringRedisTemplate redisTemplate;
-    /** 可选指标注册表：null 表示本环境未启用可观测性 */
-    private final MeterRegistry meterRegistry;
+    /** 指标门面（条件装配绑定 micrometer 或 noop，隔离类加载） */
+    private final CounterMetrics counterMetrics;
 
     public AbuseGuard(StringRedisTemplate redisTemplate) {
-        this(redisTemplate, null);
+        this(redisTemplate, CounterMetrics.NOOP);
     }
 
-    public AbuseGuard(StringRedisTemplate redisTemplate, MeterRegistry meterRegistry) {
+    public AbuseGuard(StringRedisTemplate redisTemplate, CounterMetrics counterMetrics) {
         this.redisTemplate = redisTemplate;
-        this.meterRegistry = meterRegistry;
+        this.counterMetrics = counterMetrics;
     }
 
     /**
@@ -131,11 +131,9 @@ public class AbuseGuard {
         return count == null ? 0 : count;
     }
 
-    /** 拦截指标上报：registry 缺席时静默。 */
+    /** 拦截指标上报（micrometer 在场时打点，否则 noop 静默） */
     private void recordReject(String scene, String rule) {
-        if (meterRegistry != null) {
-            meterRegistry.counter(REJECT_METRIC, "scene", scene, "rule", rule).increment();
-        }
+        counterMetrics.increment(REJECT_METRIC, "scene", scene, "rule", rule);
     }
 
     private String key(String scene, String type, String identity) {

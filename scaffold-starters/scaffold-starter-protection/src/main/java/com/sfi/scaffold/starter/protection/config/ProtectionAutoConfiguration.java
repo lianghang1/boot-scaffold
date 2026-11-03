@@ -31,9 +31,8 @@ public class ProtectionAutoConfiguration {
     }
 
     @Bean
-    public AbuseGuard abuseGuard(StringRedisTemplate redisTemplate,
-                                 org.springframework.beans.factory.ObjectProvider<io.micrometer.core.instrument.MeterRegistry> meterRegistry) {
-        return new AbuseGuard(redisTemplate, meterRegistry.getIfAvailable());
+    public AbuseGuard abuseGuard(StringRedisTemplate redisTemplate, com.sfi.scaffold.common.metrics.CounterMetrics counterMetrics) {
+        return new AbuseGuard(redisTemplate, counterMetrics);
     }
 
     @Bean
@@ -49,5 +48,28 @@ public class ProtectionAutoConfiguration {
     @Bean
     public DistributedLockAspect distributedLockAspect(RedisLockUtil lockUtil) {
         return new DistributedLockAspect(lockUtil);
+    }
+
+    /** micrometer 在场时绑定真实打点；嵌套类经 ASM 元数据判定条件，类加载安全 */
+    @org.springframework.context.annotation.Configuration(proxyBeanMethods = false)
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnClass(name = "io.micrometer.core.instrument.MeterRegistry")
+    static class MicrometerCounterMetricsConfiguration {
+
+        @org.springframework.context.annotation.Bean
+        com.sfi.scaffold.common.metrics.CounterMetrics micrometerCounterMetrics(
+                org.springframework.beans.factory.ObjectProvider<io.micrometer.core.instrument.MeterRegistry> registry) {
+            return new com.sfi.scaffold.common.metrics.MicrometerCounterMetrics(registry.getIfAvailable());
+        }
+    }
+
+    /** 兜底空实现：micrometer 不在场时静默 */
+    @org.springframework.context.annotation.Configuration(proxyBeanMethods = false)
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(com.sfi.scaffold.common.metrics.CounterMetrics.class)
+    static class DefaultCounterMetricsConfiguration {
+
+        @org.springframework.context.annotation.Bean
+        com.sfi.scaffold.common.metrics.CounterMetrics noopCounterMetrics() {
+            return com.sfi.scaffold.common.metrics.CounterMetrics.NOOP;
+        }
     }
 }

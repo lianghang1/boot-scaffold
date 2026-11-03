@@ -19,8 +19,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-boot.version>2.7.18</spring-boot.version>
-        <nexus.releases>http://NEXUS_HOST/repository/maven-releases/</nexus.releases>
-        <nexus.snapshots>http://NEXUS_HOST/repository/maven-snapshots/</nexus.snapshots>
+        <nexus.releases>http://maven.sfitech.cn:8088/nexus/content/repositories/releases</nexus.releases>
+        <nexus.snapshots>http://maven.sfitech.cn:8088/nexus/content/repositories/snapshots</nexus.snapshots>
         <knife4j.version>4.4.0</knife4j.version>
         <ttl.version>2.14.5</ttl.version>
         <bcprov.version>1.78.1</bcprov.version>

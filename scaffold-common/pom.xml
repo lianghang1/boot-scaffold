@@ -21,6 +21,12 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
+        <!-- 指标门面实现（optional：不在场时 CounterMetrics 走 noop，类加载安全） -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+            <optional>true</optional>
+        </dependency>
         <!-- SpringContextHolder：容器启动后静态取 Bean（非 Spring Bean 场景的出口） -->
         <dependency>
             <groupId>org.springframework</groupId>
