@@ -2,8 +2,6 @@ package com.sfi.scaffold.starter.job.config;
 
 import com.sfi.scaffold.starter.job.JobConfigProvider;
 import com.sfi.scaffold.starter.job.JobMetrics;
-import com.sfi.scaffold.starter.job.JpaJobRunLogSink;
-import com.sfi.scaffold.starter.job.JobRunLogRepository;
 import com.sfi.scaffold.starter.job.JobRunLogSink;
 import com.sfi.scaffold.starter.protection.lock.RedisLockUtil;
 import org.springframework.beans.factory.ObjectProvider;
@@ -75,25 +73,6 @@ public class JobAutoConfiguration {
         return new JobRegistrar(applicationContext, environment, taskScheduler,
                 runLogSink.getIfAvailable(), lockUtil.getIfAvailable(),
                 configProvider.getIfAvailable(), jobMetrics);
-    }
-
-    /**
-     * 执行日志的 JPA 落库装配，仅在类路径存在 JPA 时生效。
-     *
-     * <p>无数据库场景（如 server-lite 单机零依赖运行）下本嵌套装配整体跳过，
-     * JPA 相关类型不加载，调度链路退化为纯应用日志。</p>
-     */
-    @Configuration
-    @ConditionalOnClass(name = "javax.persistence.EntityManager")
-    public static class JpaRunLogConfiguration {
-
-        @Bean
-        @ConditionalOnMissingBean(JobRunLogSink.class)
-        public JobRunLogSink jobRunLogSink(ObjectProvider<JobRunLogRepository> runLogRepository,
-                                           ObjectProvider<TransactionTemplate> transactionTemplate) {
-            return new JpaJobRunLogSink(runLogRepository.getIfAvailable(),
-                    transactionTemplate.getIfAvailable());
-        }
     }
 
     /** micrometer 在场时绑定真实打点；嵌套类经 ASM 元数据判定条件，类加载安全 */

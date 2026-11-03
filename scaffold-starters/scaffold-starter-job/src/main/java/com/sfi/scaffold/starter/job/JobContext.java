@@ -13,7 +13,7 @@ public class JobContext {
 
     private LocalDateTime fireTime;
 
-    /** 本次执行的 job_run_log 记录 ID（如需回写补充信息） */
+    /** 本次执行的记录 ID（业务自定义 JobRunLogSink 落库时回写，框架默认无 Sink 时为 null） */
     private Long runLogId;
 
     /** 任务参数：simple 引擎来自 scaffold.job.jobs.<jobKey>.params，外部引擎来自平台下发 */
