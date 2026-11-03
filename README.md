@@ -62,10 +62,3 @@ mvn deploy \
     -Dnexus.snapshots=http://<nexus>/repository/maven-snapshots/
 ```
 
-发布凭据配 `~/.m2/settings.xml`（server id：sfi-releases / sfi-snapshots）。发 release 前把三处 `1.0.0-SNAPSHOT` 改为正式版本（scaffold-parent / 根 pom / scaffold-dependencies）。
-
-## 分支
-
-- `main`：稳定线
-- `data-link`：墓园数据采集端（cemlink，宿主形态开发中，后续迁入项目仓库）
-- `feature/scaffold-parent`：本次重构线（parent 抽取 + com.sfi.scaffold 命名空间迁移）
