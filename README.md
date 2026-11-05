@@ -14,7 +14,8 @@ boot-scaffold/
     ├── starter-log           日志基线
     ├── starter-ip            IP 归属地解析
     ├── starter-data-jpa      数据访问：BaseEntity / 雪花 ID / 乐观锁 / 多数据源 @TargetDataSource
-    ├── starter-query         动态检索（Bean Searcher 封装）
+    ├── starter-liquibase     Liquibase 集成：国产库 Database 派生 / 多数据源按库迁移（可选）
+    ├── starter-query         动态检索（Bean Searcher 封装 + doNativeQuery）
     ├── starter-security      认证鉴权：token 会话(Redis) / 三入口安全链 / openapi 签名
     ├── starter-cache         Caffeine L1 + Redis L2 两级缓存
     ├── starter-redis         Redis 客户端封装
@@ -28,7 +29,6 @@ boot-scaffold/
     ├── starter-push          SSE 实时推送
     ├── starter-ws            WebSocket 双向通道
     ├── starter-observability Micrometer + Prometheus 埋点
-    ├── starter-excel         Excel 导入导出
     └── starter-test          统一测试底座
 ```
 
