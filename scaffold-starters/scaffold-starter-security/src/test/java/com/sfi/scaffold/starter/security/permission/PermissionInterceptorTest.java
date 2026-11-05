@@ -33,7 +33,7 @@ class PermissionInterceptorTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new DemoController())
-                .addInterceptors(new PermissionInterceptor())
+                .addInterceptors(new PermissionInterceptor(new PermissionChecker()))
                 .build();
     }
 

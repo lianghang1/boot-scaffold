@@ -4,6 +4,7 @@ import com.sfi.scaffold.common.exception.GlobalErrorCode;
 import com.sfi.scaffold.common.result.R;
 import com.sfi.scaffold.common.util.ServletUtils;
 import com.sfi.scaffold.starter.security.anonymous.AnonymousScanner;
+import com.sfi.scaffold.starter.security.permission.PermissionChecker;
 import com.sfi.scaffold.starter.security.permission.PermissionInterceptor;
 import com.sfi.scaffold.starter.security.security.ScaffoldSecurityCustomizer;
 import org.springframework.beans.factory.ObjectProvider;
@@ -96,9 +97,14 @@ public class ScaffoldSecurityAutoConfiguration {
 
     /** 权限校验拦截器：认证之后对 {@code @RequirePermission} 接口做 any-of 校验。 */
     @Bean
+    public PermissionChecker permissionChecker() {
+        return new PermissionChecker();
+    }
+
+    @Bean
     @ConditionalOnMissingBean(PermissionInterceptor.class)
-    public PermissionInterceptor permissionInterceptor() {
-        return new PermissionInterceptor();
+    public PermissionInterceptor permissionInterceptor(PermissionChecker permissionChecker) {
+        return new PermissionInterceptor(permissionChecker);
     }
 
     @Bean
