@@ -2,9 +2,12 @@ package com.sfi.scaffold.starter.protection.config;
 
 import com.sfi.scaffold.starter.protection.abuse.AbuseGuard;
 import com.sfi.scaffold.starter.protection.idempotent.IdempotentAspect;
+import com.sfi.scaffold.starter.protection.identity.LoginIdentityLookup;
+import com.sfi.scaffold.starter.protection.identity.RequestIdentity;
 import com.sfi.scaffold.starter.protection.lock.DistributedLockAspect;
 import com.sfi.scaffold.starter.protection.lock.RedisLockUtil;
 import com.sfi.scaffold.starter.protection.ratelimit.RateLimitAspect;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,24 +33,41 @@ public class ProtectionAutoConfiguration {
         return new RedisLockUtil(redisTemplate);
     }
 
+    /** 请求身份：security 在场时优先登录用户，缺席纯 header/IP 解析 */
+    @Bean
+    public RequestIdentity requestIdentity(ObjectProvider<LoginIdentityLookup> loginLookup) {
+        return new RequestIdentity(loginLookup.getIfAvailable());
+    }
+
     @Bean
     public AbuseGuard abuseGuard(StringRedisTemplate redisTemplate, com.sfi.scaffold.common.metrics.CounterMetrics counterMetrics) {
         return new AbuseGuard(redisTemplate, counterMetrics);
     }
 
     @Bean
-    public RateLimitAspect rateLimitAspect(StringRedisTemplate redisTemplate) {
-        return new RateLimitAspect(redisTemplate);
+    public RateLimitAspect rateLimitAspect(StringRedisTemplate redisTemplate, RequestIdentity requestIdentity) {
+        return new RateLimitAspect(redisTemplate, requestIdentity);
     }
 
     @Bean
-    public IdempotentAspect idempotentAspect(StringRedisTemplate redisTemplate) {
-        return new IdempotentAspect(redisTemplate);
+    public IdempotentAspect idempotentAspect(StringRedisTemplate redisTemplate, RequestIdentity requestIdentity) {
+        return new IdempotentAspect(redisTemplate, requestIdentity);
     }
 
     @Bean
     public DistributedLockAspect distributedLockAspect(RedisLockUtil lockUtil) {
         return new DistributedLockAspect(lockUtil);
+    }
+
+    /** security 在场时启用登录身份查找（隔离类：本嵌套类条件不满足时整体不加载） */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "com.sfi.scaffold.starter.security.identity.LoginContext")
+    static class SecurityIdentityConfiguration {
+
+        @Bean
+        LoginIdentityLookup loginIdentityLookup() {
+            return new LoginIdentityLookup();
+        }
     }
 
     /** micrometer 在场时绑定真实打点；嵌套类经 ASM 元数据判定条件，类加载安全 */

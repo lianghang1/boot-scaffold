@@ -3,6 +3,7 @@ package com.sfi.scaffold.starter.protection.ratelimit;
 import com.sfi.scaffold.common.util.StringUtils;
 import com.sfi.scaffold.common.exception.BizException;
 import com.sfi.scaffold.common.exception.GlobalErrorCode;
+import com.sfi.scaffold.starter.protection.identity.RequestIdentity;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
@@ -40,9 +41,11 @@ public class RateLimitAspect {
             new DefaultRedisScript<>(LUA, Long.class);
 
     private final StringRedisTemplate redisTemplate;
+    private final RequestIdentity requestIdentity;
 
-    public RateLimitAspect(StringRedisTemplate redisTemplate) {
+    public RateLimitAspect(StringRedisTemplate redisTemplate, RequestIdentity requestIdentity) {
         this.redisTemplate = redisTemplate;
+        this.requestIdentity = requestIdentity;
     }
 
     @Before("@annotation(rateLimit)")
@@ -70,26 +73,13 @@ public class RateLimitAspect {
         HttpServletRequest request = attrs.getRequest();
         switch (dimension) {
             case "ip":
-                return clientIp(request);
+                return RequestIdentity.clientIp(request);
             case "account":
-                String accountId = request.getHeader("X-Account-Id");
-                return accountId != null ? accountId : clientIp(request);
+                // 真实登录身份 > 网关 header > IP
+                return requestIdentity.resolve(request);
             case "uri":
             default:
                 return request.getMethod() + ":" + request.getRequestURI();
         }
-    }
-
-    private String clientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
-            int idx = ip.indexOf(',');
-            return idx > 0 ? ip.substring(0, idx).trim() : ip.trim();
-        }
-        ip = request.getHeader("X-Real-IP");
-        if (ip != null && !ip.isEmpty()) {
-            return ip;
-        }
-        return request.getRemoteAddr();
     }
 }

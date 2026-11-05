@@ -1,8 +1,11 @@
 package com.sfi.scaffold.starter.protection;
 
 import com.sfi.scaffold.common.exception.BizException;
+import com.sfi.scaffold.starter.protection.identity.RequestIdentity;
 import com.sfi.scaffold.starter.protection.ratelimit.RateLimit;
 import com.sfi.scaffold.starter.protection.ratelimit.RateLimitAspect;
+import com.sfi.scaffold.starter.security.identity.LoginContext;
+import com.sfi.scaffold.starter.security.identity.LoginUser;
 import org.aspectj.lang.JoinPoint;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,12 +45,13 @@ class RateLimitAspectTest {
     @BeforeEach
     void setUp() {
         redisTemplate = mock(StringRedisTemplate.class);
-        aspect = new RateLimitAspect(redisTemplate);
+        aspect = new RateLimitAspect(redisTemplate, new RequestIdentity(null));
         joinPoint = mock(JoinPoint.class);
     }
 
     @AfterEach
     void tearDown() {
+        LoginContext.clear();
         RequestContextHolder.resetRequestAttributes();
     }
 
@@ -138,7 +142,25 @@ class RateLimitAspectTest {
         assertDoesNotThrow(() -> aspect.check(joinPoint, rateLimit(10, 1, "account", "")));
         ArgumentCaptor<List<String>> keys = ArgumentCaptor.forClass((Class) List.class);
         verify(redisTemplate).execute(any(RedisScript.class), keys.capture(), anyString());
-        assertTrue(keys.getValue().get(0).endsWith(":42"));
+        assertTrue(keys.getValue().get(0).endsWith(":hdr:42"));
+    }
+
+    @Test
+    void loginIdentityShouldBeatGatewayHeaderInAccountDimension() {
+        LoginUser user = new LoginUser();
+        user.setAccountId(7L);
+        LoginContext.set(user);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/x");
+        request.addHeader("X-Account-Id", "42");
+        bindRequest(request);
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), anyString())).thenReturn(1L);
+
+        RateLimitAspect securityAware = new RateLimitAspect(redisTemplate,
+                new RequestIdentity(new com.sfi.scaffold.starter.protection.identity.LoginIdentityLookup()));
+        assertDoesNotThrow(() -> securityAware.check(joinPoint, rateLimit(10, 1, "account", "")));
+        ArgumentCaptor<List<String>> keys = ArgumentCaptor.forClass((Class) List.class);
+        verify(redisTemplate).execute(any(RedisScript.class), keys.capture(), anyString());
+        assertTrue(keys.getValue().get(0).endsWith(":acct:7"));
     }
 
     @Test

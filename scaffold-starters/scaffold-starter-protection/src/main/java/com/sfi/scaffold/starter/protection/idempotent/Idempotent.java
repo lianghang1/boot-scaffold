@@ -21,4 +21,10 @@ public @interface Idempotent {
 
     /** 幂等窗口（秒） */
     int windowSeconds() default 10;
+
+    /** 业务幂等键 SpEL（如 "'pay:' + #p0"）；缺省用「身份 + URI + 参数摘要」默认键 */
+    String key() default "";
+
+    /** 业务异常时删除幂等键（异常说明业务未发生，窗口内应允许重试） */
+    boolean deleteOnException() default true;
 }
