@@ -131,10 +131,11 @@ public class ScaffoldHttpClient {
                 || "HEAD".equalsIgnoreCase(method);
     }
 
-    /** 仅网络类失败重试；中断立即放弃（线程要退出）。 */
+    /** 仅网络类失败重试；中断/响应超限立即放弃（重试无意义且线程要退出）。 */
     private static boolean retryable(TransportException e) {
         return e.getErrorType() != com.sfi.scaffold.starter.http.transport.TransportErrorType.INTERRUPTED
-                && e.getErrorType() != com.sfi.scaffold.starter.http.transport.TransportErrorType.CONNECT;
+                && e.getErrorType() != com.sfi.scaffold.starter.http.transport.TransportErrorType.CONNECT
+                && e.getErrorType() != com.sfi.scaffold.starter.http.transport.TransportErrorType.RESPONSE_TOO_LARGE;
     }
 
     private static void sleepQuietly(long millis) {

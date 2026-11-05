@@ -20,17 +20,27 @@ import java.util.concurrent.TimeUnit;
  */
 public class OkHttpTransport implements HttpTransport {
 
+    /** 默认响应体上限 32MB：防对端失控返回大文件把内存打爆 */
+    public static final long DEFAULT_MAX_RESPONSE_BYTES = 32L * 1024 * 1024;
+
     private final OkHttpClient client;
+    private final long maxResponseBytes;
 
     public OkHttpTransport(int connectTimeoutMs, int readTimeoutMs) {
+        this(connectTimeoutMs, readTimeoutMs, DEFAULT_MAX_RESPONSE_BYTES);
+    }
+
+    public OkHttpTransport(int connectTimeoutMs, int readTimeoutMs, long maxResponseBytes) {
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
                 .readTimeout(readTimeoutMs, TimeUnit.MILLISECONDS)
                 .build();
+        this.maxResponseBytes = maxResponseBytes;
     }
 
     public OkHttpTransport(OkHttpClient client) {
         this.client = client;
+        this.maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES;
     }
 
     @Override
@@ -61,7 +71,7 @@ public class OkHttpTransport implements HttpTransport {
                 : client;
 
         try (Response response = perRequest.newCall(builder.build()).execute()) {
-            byte[] body = response.body() == null ? new byte[0] : response.body().bytes();
+            byte[] body = readBodyLimited(response, request);
             okhttp3.Headers headers = response.headers();
             java.util.Map<String, String> headerMap = new java.util.LinkedHashMap<String, String>();
             for (int i = 0; i < headers.size(); i++) {
@@ -71,6 +81,38 @@ public class OkHttpTransport implements HttpTransport {
         } catch (IOException e) {
             throw mapError(e, request);
         }
+    }
+
+    /**
+     * 限额读取响应体：超 {@code maxResponseBytes} 立即中止并抛
+     * {@link TransportErrorType#RESPONSE_TOO_LARGE}，防止对端失控响应打爆内存。
+     */
+    private byte[] readBodyLimited(Response response, TransportRequest request) throws IOException {
+        if (response.body() == null) {
+            return new byte[0];
+        }
+        long contentLength = response.body().contentLength();
+        if (contentLength > maxResponseBytes) {
+            throw new TransportException(TransportErrorType.RESPONSE_TOO_LARGE,
+                    "HTTP 响应超过上限: " + request.getMethod() + " " + request.getUrl()
+                            + " contentLength=" + contentLength + " max=" + maxResponseBytes);
+        }
+        java.io.InputStream in = response.body().byteStream();
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(
+                contentLength > 0 && contentLength <= maxResponseBytes ? (int) contentLength : 8192);
+        byte[] buffer = new byte[8192];
+        long total = 0;
+        int read;
+        while ((read = in.read(buffer)) != -1) {
+            total += read;
+            if (total > maxResponseBytes) {
+                throw new TransportException(TransportErrorType.RESPONSE_TOO_LARGE,
+                        "HTTP 响应超过上限: " + request.getMethod() + " " + request.getUrl()
+                                + " max=" + maxResponseBytes);
+            }
+            out.write(buffer, 0, read);
+        }
+        return out.toByteArray();
     }
 
     /** 按异常特征归类为 TransportErrorType，供重试与告警决策。 */

@@ -6,31 +6,19 @@ import cn.zhxu.bs.boot.BeanSearcherAutoConfiguration;
 import cn.zhxu.bs.implement.BaseSearcher;
 import com.sfi.scaffold.query.QueryUtilsX;
 import com.sfi.scaffold.query.QueryInterceptor;
-import com.sfi.scaffold.query.plan.QueryPlanRegistryX;
 import com.sfi.scaffold.query.plan.ScaffoldMetaResolver;
-import com.sfi.scaffold.query.plan.annotation.QueryPlanX;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
-import org.springframework.core.type.filter.AnnotationTypeFilter;
-import org.springframework.util.ClassUtils;
-
-import java.io.IOException;
-import java.util.Set;
 
 /**
  * 动态检索自动配置：
  * <ol>
  *   <li>把 {@link ScaffoldMetaResolver} 挂到 BeanSearcher / MapSearcher（支持 QueryPlanX 注解合成）</li>
  *   <li>初始化 {@link QueryUtilsX} 静态门面</li>
- *   <li>扫描并注册 QueryPlanX 计划类</li>
  * </ol>
  *
  * <p>Bean Searcher starter 默认使用 SpringSqlExecutor，检索自动参与 Spring 事务。
@@ -53,14 +41,10 @@ public class QueryAutoConfiguration {
     @Bean
     public QueryUtilsInitializer queryUtilsInitializer(BeanSearcher beanSearcher, MapSearcher mapSearcher,
                                                        QueryProperties properties,
+                                                       org.springframework.core.env.Environment environment,
                                                        org.springframework.beans.factory.ObjectProvider<QueryInterceptor> interceptors,
                                                        org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate namedJdbc) {
-        return new QueryUtilsInitializer(beanSearcher, mapSearcher, properties, interceptors, namedJdbc);
-    }
-
-    @Bean
-    public QueryPlanRegistrarX queryPlanRegistrar(QueryProperties properties) {
-        return new QueryPlanRegistrarX(properties);
+        return new QueryUtilsInitializer(beanSearcher, mapSearcher, properties, environment, interceptors, namedJdbc);
     }
 
     /**
@@ -114,49 +98,17 @@ public class QueryAutoConfiguration {
 
         QueryUtilsInitializer(BeanSearcher beanSearcher, MapSearcher mapSearcher,
                               QueryProperties properties,
+                              org.springframework.core.env.Environment environment,
                               org.springframework.beans.factory.ObjectProvider<QueryInterceptor> interceptors,
                               org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate namedJdbc) {
+            // 收集 db-type 声明：doNativeQuery 分页与 @TableX.useIndex 校验按数据源解析
+            DatabaseTypes.configure(environment);
             QueryUtilsX.configure(beanSearcher, mapSearcher);
             QueryUtilsX.configure(properties);
             QueryUtilsX.configureInterceptors(interceptors.orderedStream()
                     .collect(java.util.stream.Collectors.toList()));
             if (namedJdbc != null) {
                 QueryUtilsX.configureNative(namedJdbc);
-            }
-        }
-    }
-
-    /**
-     * 扫描 {@code scaffold.search.plan-packages}，注册 @QueryPlanX 计划类。
-     */
-    static class QueryPlanRegistrarX implements InitializingBean {
-
-        private final QueryProperties properties;
-
-        QueryPlanRegistrarX(QueryProperties properties) {
-            this.properties = properties;
-        }
-
-        @Override
-        public void afterPropertiesSet() throws IOException {
-            if (properties.getPlanPackages().isEmpty()) {
-                return;
-            }
-            ClassPathScanningCandidateComponentProvider scanner =
-                    new ClassPathScanningCandidateComponentProvider(false) {
-                        @Override
-                        protected boolean isCandidateComponent(AnnotatedBeanDefinition definition) {
-                            // 计划类是具体类而非组件（无 @Component），放宽默认判定
-                            return definition.getMetadata().isIndependent();
-                        }
-                    };
-            scanner.addIncludeFilter(new AnnotationTypeFilter(QueryPlanX.class));
-            for (String pkg : properties.getPlanPackages()) {
-                Set<BeanDefinition> definitions = scanner.findCandidateComponents(pkg);
-                for (BeanDefinition definition : definitions) {
-                    Class<?> clazz = ClassUtils.resolveClassName(definition.getBeanClassName(), getClass().getClassLoader());
-                    QueryPlanRegistryX.register(clazz);
-                }
             }
         }
     }

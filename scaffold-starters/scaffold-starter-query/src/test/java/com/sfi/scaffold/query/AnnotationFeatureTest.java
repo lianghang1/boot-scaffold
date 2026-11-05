@@ -62,9 +62,9 @@ class AnnotationFeatureTest {
      */
     @Test
     void testAllAttributes() {
-        List<AttrDemoPlan> list = QueryUtilsX.doListQuery(AttrDemoPlan.class,
+        List<AttrDemoPlan> list = QueryUtilsX.doListQuery(
                 Collections.singletonList(
-                        new QueryFilterX("quantity", OperatorX.GE, 2)), null);
+                        new QueryFilterX("quantity", OperatorX.GE, 2)), AttrDemoPlan.class);
 
         // 固定条件 status >= 2（type=Integer 解析 "2"）+ quantity >= 2 → 订单 1、2
         list.forEach(r -> System.out.println("ROW>> " + r.getOrderNo() + " st=" + r.getStatus() + " qty=" + r.getQuantity()));

@@ -14,7 +14,6 @@ import com.sfi.scaffold.query.plan.annotation.IgnorePropertiesX;
 import com.sfi.scaffold.query.plan.annotation.IgnorePropertyX;
 import com.sfi.scaffold.query.plan.annotation.JoinColumnX;
 import com.sfi.scaffold.query.plan.annotation.JoinTableX;
-import com.sfi.scaffold.query.plan.annotation.QueryPlanX;
 import com.sfi.scaffold.query.plan.annotation.TableX;
 
 import java.lang.annotation.Annotation;
@@ -30,9 +29,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 查询计划元数据解析器：把 {@code @QueryPlanX + @TableX + @JoinTableX + @ColumnX}
+ * 查询计划元数据解析器：把 {@code @TableX + @JoinTableX + @ColumnX}
  * 注解在运行时合成为 Bean Searcher {@link BeanMeta}，SQL 由 Bean Searcher 统一生成；
- * 非计划类委托给默认解析器。
+ * 非 {@code @TableX} 计划类委托给默认解析器。
  *
  * <p>字段映射语义：未标注 {@code @ColumnX} 的字段按驼峰转下划线自动映射
  * （主表别名前缀），{@code @IgnorePropertyX / @IgnorePropertiesX} 排除，
@@ -82,7 +81,8 @@ public class ScaffoldMetaResolver implements MetaResolver {
     @Override
     @SuppressWarnings("unchecked")
     public <T> BeanMeta<T> resolve(Class<T> beanClass) {
-        if (beanClass.isAnnotationPresent(QueryPlanX.class) && beanClass.isAnnotationPresent(TableX.class)) {
+        // @TableX 即计划类标记（计划类即结果类，字段即查询结果字段）
+        if (beanClass.isAnnotationPresent(TableX.class)) {
             return (BeanMeta<T>) cache.computeIfAbsent(beanClass, this::synthesize);
         }
         // JPA 实体：按 ORM 列名规则合成元数据（检索过滤字段与建表列名保持一致），如 SysRole
@@ -103,13 +103,16 @@ public class ScaffoldMetaResolver implements MetaResolver {
     private BeanMeta<?> synthesize(Class<?> planClass) {
         TableX table = planClass.getAnnotation(TableX.class);
         String mainAlias = table.alias().isEmpty() ? table.name() : table.alias();
+        // 具名数据源透传给 BeanMeta：非空时 SQL 执行器按名选库（配合宿主 NamedDataSource Bean），
+        // 空串传 null（不绑定，走默认数据源 / @TargetDataSource 的 ThreadLocal 路由）
+        String dataSource = table.dataSource().isEmpty() ? null : table.dataSource();
 
         // 需要忽略的属性（@IgnorePropertyX 字段级 + @IgnorePropertiesX 类级）
         Set<String> ignored = collectIgnored(planClass);
         // @FieldTypeX 覆盖的字段类型
         Map<String, Class<?>> typeOverrides = collectTypeOverrides(planClass);
 
-        BeanMeta<?> beanMeta = new BeanMeta<>(planClass, null,
+        BeanMeta<?> beanMeta = new BeanMeta<>(planClass, dataSource,
                 new SqlSnippet(buildTables(planClass, table, mainAlias)),
                 new SqlSnippet(""), new SqlSnippet(""), new SqlSnippet(""), new SqlSnippet(""),
                 true, false, 0, 0, 0);
@@ -203,6 +206,23 @@ public class ScaffoldMetaResolver implements MetaResolver {
      * {@code t_order o FORCE INDEX(idx_xxx) left join t_dept d on (d.dept_id = o.id)}
      */
     private String buildTables(Class<?> planClass, TableX table, String mainAlias) {
+        // useIndex 生成 FORCE INDEX（MySQL 专有）：计划类绑定的库非 MySQL 系时启动期即失败，避免运行期 SQL 报错
+        com.sfi.scaffold.common.database.DatabaseType dbType = com.sfi.scaffold.query.config.DatabaseTypes
+                .resolve(table.dataSource().isEmpty() ? null : table.dataSource());
+        if (!dbType.isMySqlFamily()) {
+            if (!table.useIndex().isEmpty()) {
+                throw new IllegalStateException("QueryPlanX [" + planClass.getName()
+                        + "] 的 useIndex=" + table.useIndex() + " 依赖 MySQL FORCE INDEX 语法，当前库为 "
+                        + dbType + "，请移除 useIndex 或改用数据库原生索引提示");
+            }
+            for (JoinTableX joinTable : planClass.getAnnotationsByType(JoinTableX.class)) {
+                if (!joinTable.useIndex().isEmpty()) {
+                    throw new IllegalStateException("QueryPlanX [" + planClass.getName()
+                            + "] 关联表 " + joinTable.alias() + " 的 useIndex 依赖 MySQL FORCE INDEX 语法，当前库为 "
+                            + dbType + "，请移除");
+                }
+            }
+        }
         StringBuilder tables = new StringBuilder(table.name());
         if (!table.alias().isEmpty()) {
             tables.append(' ').append(table.alias());

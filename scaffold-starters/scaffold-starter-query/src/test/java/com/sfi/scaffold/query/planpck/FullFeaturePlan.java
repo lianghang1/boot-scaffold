@@ -6,14 +6,13 @@ import com.sfi.scaffold.query.plan.annotation.IgnorePropertyX;
 import com.sfi.scaffold.query.plan.annotation.IgnorePropertiesX;
 import com.sfi.scaffold.query.plan.annotation.JoinColumnX;
 import com.sfi.scaffold.query.plan.annotation.JoinTableX;
-import com.sfi.scaffold.query.plan.annotation.QueryPlanX;
+
 import com.sfi.scaffold.query.plan.annotation.TableX;
 
 /**
  * 全功能计划：自动映射（无 @ColumnX 字段驼峰转下划线）+ @IgnorePropertyX +
  * @IgnorePropertiesX + @FieldTypeX + useIndex(FORCE INDEX)。
  */
-@QueryPlanX
 @TableX(name = "t_user", alias = "u", useIndex = "idx_user_status")
 @JoinTableX(name = "t_dept", alias = "d", useIndex = "idx_dept_pk",
         columns = @JoinColumnX(name = "id", referencedColumnName = "dept_id"))

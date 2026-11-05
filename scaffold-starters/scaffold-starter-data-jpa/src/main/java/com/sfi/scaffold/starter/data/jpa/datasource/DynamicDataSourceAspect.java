@@ -20,6 +20,10 @@ import org.springframework.core.annotation.Order;
  * <p>key 在进入方法体之前与 {@code scaffold.datasource.dynamic.datasources} 配置比对，
  * 不存在直接抛 {@link IllegalStateException}——fail-fast，而非静默回落主库掩盖配置错误。</p>
  *
+ * <p><b>注意：仅方法入口切换有效。</b>外层方法已开启 {@code @Transactional} 事务时，
+ * 连接在事务开启瞬间已绑定，事务内部再经 {@code @TargetDataSource} 切换不会生效
+ * （Spring 事务连接绑定的固有约束）——跨库写入请拆分到独立事务方法。</p>
+ *
  * @author lianghang
  */
 @Aspect

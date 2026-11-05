@@ -73,4 +73,13 @@ public class DataJpaAutoConfiguration {
     public DataChangeEventListener dataChangeEventListener(EntityManagerFactory entityManagerFactory) {
         return new DataChangeEventListener(entityManagerFactory);
     }
+
+    /**
+     * Hibernate dialect 派生：用户未显式配置 platform 时，按统一声明
+     * （{@code scaffold.database.db-type} / 数据源块内 {@code db-type}）派生注入。
+     */
+    @Bean
+    public static HibernateDialectPostProcessor hibernateDialectPostProcessor() {
+        return new HibernateDialectPostProcessor();
+    }
 }

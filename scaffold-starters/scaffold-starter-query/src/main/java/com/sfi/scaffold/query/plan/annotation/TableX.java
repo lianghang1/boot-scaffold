@@ -28,6 +28,12 @@ public @interface TableX {
     /** 强制索引名称（MySQL 语法：表名后拼 FORCE INDEX(idx)） */
     String useIndex() default "";
 
+    /**
+     * 具名数据源（与宿主注册的 {@code NamedDataSource} Bean 名对应，多库检索用）。
+     * 空串表示不绑定：走默认数据源或调用方 {@code @TargetDataSource} 的 ThreadLocal 路由。
+     */
+    String dataSource() default "";
+
     /** 固定过滤条件（总是生效，前端无法覆盖） */
     FixedFilter[] filters() default {};
 }

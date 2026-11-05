@@ -13,13 +13,9 @@ public class QueryMeta {
     /** 检索类（计划类或实体 VO 类）全名 */
     private final String beanClassName;
 
-    /** 计划名（按计划名调用时非空） */
-    private final String planName;
-
-    public QueryMeta(String op, String beanClassName, String planName) {
+    public QueryMeta(String op, String beanClassName) {
         this.op = op;
         this.beanClassName = beanClassName;
-        this.planName = planName;
     }
 
     public String getOp() {
@@ -28,9 +24,5 @@ public class QueryMeta {
 
     public String getBeanClassName() {
         return beanClassName;
-    }
-
-    public String getPlanName() {
-        return planName;
     }
 }

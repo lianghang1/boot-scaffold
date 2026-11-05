@@ -36,6 +36,12 @@ public class AccessLogAspect {
     private static final int MAX_ARGS_LENGTH = 500;
     /** 响应摘要最大长度：出站只留概貌，全量结果以响应体为准 */
     private static final int MAX_RESULT_LENGTH = 300;
+    /**
+     * 敏感字段脱敏模式（password/token/secret 等），预编译复用——
+     * 切面在每个请求上执行，避免 String.replaceAll 每次重新 compile。
+     */
+    private static final java.util.regex.Pattern SENSITIVE_PATTERN = java.util.regex.Pattern.compile(
+            "(\"(password|passwd|secret|appSecret|token|accessToken)\"\\s*:\\s*\")[^\"]*(\")");
 
     private final ObjectMapper objectMapper;
 
@@ -141,8 +147,7 @@ public class AccessLogAspect {
 
     /** 敏感字段脱敏（password/token/secret），防止访问日志泄漏凭据。 */
     private String maskSensitive(String json) {
-        return json
-                .replaceAll("(\"(password|passwd|secret|appSecret|token|accessToken)\"\\s*:\\s*\")[^\"]*(\")", "$1***$3");
+        return SENSITIVE_PATTERN.matcher(json).replaceAll("$1***$3");
     }
 
     private Object simplify(Object arg) {

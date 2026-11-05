@@ -6,7 +6,7 @@ import com.sfi.scaffold.query.plan.annotation.IgnorePropertiesX;
 import com.sfi.scaffold.query.plan.annotation.IgnorePropertyX;
 import com.sfi.scaffold.query.plan.annotation.JoinColumnX;
 import com.sfi.scaffold.query.plan.annotation.JoinTableX;
-import com.sfi.scaffold.query.plan.annotation.QueryPlanX;
+
 import com.sfi.scaffold.query.plan.annotation.FixedFilter;
 import com.sfi.scaffold.query.plan.annotation.TableX;
 
@@ -20,7 +20,6 @@ import com.sfi.scaffold.query.plan.annotation.TableX;
  * t_label(label_key, label_type, label_value)
  * </pre>
  */
-@QueryPlanX(name = "attrDemoPlan")
 @TableX(name = "t_order", alias = "o",
         filters = @FixedFilter(name = "status", op = com.sfi.scaffold.query.filter.OperatorX.GE,
                 value = "2", type = Integer.class))          // 固定条件：type 指定按 Integer 解析 "2"

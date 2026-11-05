@@ -1,5 +1,6 @@
 package com.sfi.scaffold.starter.powerjob;
 
+import com.sfi.scaffold.starter.job.JobExecutor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -23,7 +24,7 @@ import org.springframework.context.annotation.Configuration;
 public class PowerJobAutoConfiguration {
 
     @Bean
-    public PowerJobJobAdapter powerJobJobAdapter(ApplicationContext applicationContext) {
-        return new PowerJobJobAdapter(applicationContext);
+    public PowerJobJobAdapter powerJobJobAdapter(ApplicationContext applicationContext, JobExecutor jobExecutor) {
+        return new PowerJobJobAdapter(applicationContext, jobExecutor);
     }
 }

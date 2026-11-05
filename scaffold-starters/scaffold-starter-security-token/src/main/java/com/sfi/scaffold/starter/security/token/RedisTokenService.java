@@ -68,6 +68,11 @@ public class RedisTokenService implements TokenService {
             return null;
         }
         String json = redisTemplate.opsForValue().get(TOKEN_KEY + token);
+        return parseSession(json);
+    }
+
+    /** 会话 JSON 反序列化：失败按无效处理（已失效/残留索引），不向业务抛异常 */
+    private SessionInfo parseSession(String json) {
         if (json == null) {
             return null;
         }
@@ -141,21 +146,35 @@ public class RedisTokenService implements TokenService {
 
     @Override
     public Map<String, SessionInfo> listAllOnlineSessions() {
-        Map<String, SessionInfo> result = new LinkedHashMap<>();
+        // SCAN 收集 token 及其所属账户索引，mGet 一次取回全部会话 JSON，避免逐 token N+1 往返
+        Map<String, String> accountByToken = new LinkedHashMap<>();
         for (String accountKey : scanKeys(ACCOUNT_KEY + "*")) {
-            String accountId = accountKey.substring(ACCOUNT_KEY.length());
             Set<String> tokens = redisTemplate.opsForSet().members(accountKey);
             if (tokens == null) {
                 continue;
             }
             for (String token : tokens) {
-                SessionInfo session = resolve(token);
-                if (session != null) {
-                    result.put(token, session);
-                } else {
-                    // 清理过期残留索引，避免账户索引无限膨胀
-                    redisTemplate.opsForSet().remove(accountKey, token);
-                }
+                accountByToken.put(token, accountKey);
+            }
+        }
+        Map<String, SessionInfo> result = new LinkedHashMap<>();
+        if (accountByToken.isEmpty()) {
+            return result;
+        }
+        List<String> keys = new ArrayList<>(accountByToken.size());
+        for (String token : accountByToken.keySet()) {
+            keys.add(TOKEN_KEY + token);
+        }
+        List<String> jsons = redisTemplate.opsForValue().multiGet(keys);
+        int index = 0;
+        for (String token : accountByToken.keySet()) {
+            String json = jsons == null ? null : jsons.get(index++);
+            SessionInfo session = parseSession(json);
+            if (session != null) {
+                result.put(token, session);
+            } else {
+                // 清理过期残留索引，避免账户索引无限膨胀
+                redisTemplate.opsForSet().remove(accountByToken.get(token), token);
             }
         }
         return result;

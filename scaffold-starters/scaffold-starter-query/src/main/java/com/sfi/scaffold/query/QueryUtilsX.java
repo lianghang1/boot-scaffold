@@ -12,7 +12,6 @@ import com.sfi.scaffold.common.exception.GlobalErrorCode;
 import com.sfi.scaffold.query.config.QueryProperties;
 import com.sfi.scaffold.query.filter.OperatorX;
 import com.sfi.scaffold.query.filter.QueryFilterX;
-import com.sfi.scaffold.query.plan.QueryPlanRegistryX;
 import com.sfi.scaffold.query.plan.annotation.IgnorePropertyX;
 import com.sfi.scaffold.query.plan.annotation.QueryPlanX;
 import com.sfi.scaffold.query.plan.annotation.TableX;
@@ -54,8 +53,12 @@ import java.util.function.Supplier;
  * List<UserVO> list = QueryUtilsX.doListQuery(filters, UserVO.class);
  * long count       = QueryUtilsX.doCount(filters, UserVO.class);
  *
- * // QueryPlanX（命名联表查询计划）
- * Page<DeptUserVO> p = QueryUtilsX.doQuery("userPlan", filters, PageRequest.of(0, 15));
+ * // QueryPlanX 计划类（@TableX 声明，计划类即结果类；直接传类执行）
+ * Page<DeptUserSummaryPlan> p = QueryUtilsX.doQuery(filters, PageRequest.of(0, 15), DeptUserSummaryPlan.class);
+ *
+ * // 通用查询端点：@QueryPlanX({UserPlan.class, OrderPlan.class}) 贴 controller，
+ * // 前端传计划 SimpleName，白名单内解析
+ * Class<?> planClass = QueryUtilsX.resolvePlan(this, "UserPlan");
  * }</pre>
  *
  * @author lianghang
@@ -123,9 +126,9 @@ public final class QueryUtilsX {
 
     // ==================== 统一执行管道：拦截器 + 计时 + 慢日志 + 异常翻译 ====================
 
-    private static <T> T execute(String op, Class<?> beanClass, String planName, Supplier<T> body) {
+    private static <T> T execute(String op, Class<?> beanClass, Supplier<T> body) {
         List<QueryInterceptor> its = interceptors;
-        QueryMeta meta = new QueryMeta(op, beanClass.getName(), planName);
+        QueryMeta meta = new QueryMeta(op, beanClass.getName());
         if (its != null) {
             for (QueryInterceptor it : its) {
                 it.before(meta);
@@ -149,7 +152,7 @@ public final class QueryUtilsX {
         }
         long threshold = props() == null ? 1000L : props().getSlowSqlMillis();
         if (threshold > 0 && elapsed >= threshold) {
-            log.warn("[query] 慢检索: op={} class={} plan={} 耗时={}ms", op, beanClass.getSimpleName(), planName, elapsed);
+            log.warn("[query] 慢检索: op={} class={} 耗时={}ms", op, beanClass.getSimpleName(), elapsed);
         }
         return result;
     }
@@ -162,24 +165,11 @@ public final class QueryUtilsX {
     // ==================== 分页查询（返回 Page） ====================
 
     public static <T> Page<T> doQuery(List<QueryFilterX> filters, Pageable pageable, Class<T> beanClass) {
-        return doQuery(beanClass, filters, pageable);
-    }
-
-    public static <T> Page<T> doQuery(Class<T> beanClass, List<QueryFilterX> filters, Pageable pageable) {
-        return execute("page-query", beanClass, null, () -> doQuery0(beanClass, filters, pageable));
+        return execute("page-query", beanClass, () -> doQuery0(beanClass, filters, pageable));
     }
 
     private static <T> Page<T> doQuery0(Class<T> beanClass, List<QueryFilterX> filters, Pageable pageable) {
         MapBuilder mb = builder(beanClass, filters, pageable);
-        if (isPlanWithReturnType(beanClass)) {
-            if (isPaged(pageable)) {
-                SearchResult<Map<String, Object>> result = mapSearcher().search(beanClass, mb.build());
-                List<T> list = convertPlanRows(beanClass, result.getDataList());
-                return new PageImpl<>(list, pageable, result.getTotalCount().longValue());
-            }
-            List<T> list = searchPlanAllCapped(beanClass, mb);
-            return new PageImpl<>(list, Pageable.unpaged(), list.size());
-        }
         if (isPaged(pageable)) {
             SearchResult<T> result = searcher().search(beanClass, mb.build());
             return new PageImpl<>(result.getDataList(), pageable, result.getTotalCount().longValue());
@@ -190,67 +180,32 @@ public final class QueryUtilsX {
         return new PageImpl<>(list, Pageable.unpaged(), total);
     }
 
-    /**
-     * 按计划名分页查询（QueryPlanX 注册表查找）。
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> Page<T> doQuery(String planName, List<QueryFilterX> filters, Pageable pageable) {
-        Class<?> planClass = QueryPlanRegistryX.require(planName);
-        return execute("page-query", planClass, planName, () -> {
-            Page<?> page = doQuery0(planClass, filters, pageable);
-            return (Page<T>) page;
-        });
-    }
-
     // ==================== 列表查询 ====================
 
     public static <T> List<T> doListQuery(List<QueryFilterX> filters, Class<T> beanClass) {
-        return doListQuery(beanClass, filters, null);
+        return execute("list-query", beanClass, () -> doListQuery0(beanClass, filters, null));
     }
 
+    /**
+     * 分页列表查询。pageable 不要传 null（会与 orFilters/Sort 重载产生歧义），
+     * 不分页请用二参版 {@link #doListQuery(List, Class)}。
+     */
     public static <T> List<T> doListQuery(List<QueryFilterX> filters, Pageable pageable, Class<T> beanClass) {
-        return doListQuery(beanClass, filters, pageable);
-    }
-
-    public static <T> List<T> doListQuery(Class<T> beanClass, List<QueryFilterX> filters, Pageable pageable) {
-        return execute("list-query", beanClass, null, () -> doListQuery0(beanClass, filters, pageable));
+        return execute("list-query", beanClass, () -> doListQuery0(beanClass, filters, pageable));
     }
 
     private static <T> List<T> doListQuery0(Class<T> beanClass, List<QueryFilterX> filters, Pageable pageable) {
         MapBuilder mb = builder(beanClass, filters, pageable);
-        if (isPlanWithReturnType(beanClass)) {
-            Map<String, Object> params = mb.build();
-            if (isPaged(pageable)) {
-                return convertPlanRows(beanClass, mapSearcher().searchList(beanClass, params));
-            }
-            return searchPlanAllCapped(beanClass, mb);
-        }
         if (isPaged(pageable)) {
             return searcher().searchList(beanClass, mb.build());
         }
         return searchAllCapped(beanClass, mb);
     }
 
-    /**
-     * 按计划名列表查询（QueryPlanX 注册表查找）。
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> List<T> doListQuery(String planName, List<QueryFilterX> filters, Pageable pageable) {
-        Class<?> planClass = QueryPlanRegistryX.require(planName);
-        return execute("list-query", planClass, planName, () -> {
-            List<?> list = doListQuery0(planClass, filters, pageable);
-            return (List<T>) list;
-        });
-    }
-
     // ==================== 计数 ====================
 
     public static long doCount(List<QueryFilterX> filters, Class<?> beanClass) {
-        return doCount(beanClass, filters);
-    }
-
-    public static long doCount(Class<?> beanClass, List<QueryFilterX> filters) {
-        return execute("count", beanClass, null, () -> doCount0(beanClass, filters));
+        return execute("count", beanClass, () -> doCount0(beanClass, filters));
     }
 
     private static long doCount0(Class<?> beanClass, List<QueryFilterX> filters) {
@@ -259,15 +214,11 @@ public final class QueryUtilsX {
         return result.getTotalCount().longValue();
     }
 
-    public static long doCount(String planName, List<QueryFilterX> filters) {
-        return doCount(QueryPlanRegistryX.require(planName), filters);
-    }
-
     // ==================== orFilters 重载 ====================
 
     public static <T> Page<T> doQuery(List<QueryFilterX> filters, List<QueryFilterX> orFilters,
                                       Pageable pageable, Class<T> beanClass) {
-        return execute("page-query", beanClass, null, () -> {
+        return execute("page-query", beanClass, () -> {
             MapBuilder mb = builder(beanClass, filters, orFilters, pageable, pageable == null ? null : pageable.getSort());
             if (isPaged(pageable)) {
                 SearchResult<T> result = searcher().search(beanClass, mb.build());
@@ -280,14 +231,14 @@ public final class QueryUtilsX {
     }
 
     public static <T> List<T> doListQuery(List<QueryFilterX> filters, List<QueryFilterX> orFilters, Class<T> beanClass) {
-        return execute("list-query", beanClass, null, () -> {
+        return execute("list-query", beanClass, () -> {
             MapBuilder mb = builder(beanClass, filters, orFilters, null, null);
             return searchAllCapped(beanClass, mb);
         });
     }
 
     public static long doCount(List<QueryFilterX> filters, List<QueryFilterX> orFilters, Class<?> beanClass) {
-        return execute("count", beanClass, null, () -> {
+        return execute("count", beanClass, () -> {
             SearchResult<?> result = searcher().search(beanClass,
                     builder(beanClass, filters, orFilters, null, null).build());
             return result.getTotalCount().longValue();
@@ -300,7 +251,7 @@ public final class QueryUtilsX {
      * 只排序不分页的列表查询。
      */
     public static <T> List<T> doListQuery(List<QueryFilterX> filters, Sort sort, Class<T> beanClass) {
-        return execute("list-query", beanClass, null, () -> {
+        return execute("list-query", beanClass, () -> {
             MapBuilder mb = builder(beanClass, filters, null, null, sort);
             return searchAllCapped(beanClass, mb);
         });
@@ -382,11 +333,13 @@ public final class QueryUtilsX {
     }
 
     /**
-     * 原生 SQL 分页查询（LIMIT/OFFSET 语法，适用 MySQL/H2/PG；Oracle 等需自行改写 SQL）。
+     * 原生 SQL 分页查询：分页片段按 {@code scaffold.database.db-type} 派生
+     * （MySQL/PG/金仓/openGauss/OceanBase 用 LIMIT 组，Oracle/SQL Server/达梦用 OFFSET-FETCH 组），
+     * 未声明时维持 LIMIT 语法（MySQL 系）。
      */
     public static <T> List<T> doNativeQuery(String sql, Map<String, Object> params,
                                             Pageable pageable, Class<T> returnType) {
-        return execute("native-query", returnType, null, () -> doNativeQuery0(sql, params, pageable, returnType));
+        return execute("native-query", returnType, () -> doNativeQuery0(sql, params, pageable, returnType));
     }
 
     private static <T> List<T> doNativeQuery0(String sql, Map<String, Object> params,
@@ -397,13 +350,16 @@ public final class QueryUtilsX {
         }
         Map<String, Object> bind = params == null ? new java.util.HashMap<>() : new java.util.HashMap<>(params);
         String execSql = sql;
+        // 分页片段按 scaffold.database.db-type 派生（LIMIT 组 / OFFSET-FETCH 组），未声明时维持 LIMIT（MySQL 系）
+        com.sfi.scaffold.common.database.DatabaseType dbType =
+                com.sfi.scaffold.query.config.DatabaseTypes.resolve(null);
         if (isPaged(pageable)) {
-            execSql = sql + " LIMIT :__limit OFFSET :__offset";
+            execSql = com.sfi.scaffold.query.config.PaginationDialect.paginate(dbType, sql);
             bind.put("__limit", pageable.getPageSize());
             bind.put("__offset", pageable.getOffset());
         } else {
             int max = props() == null ? 10000 : props().getMaxRows();
-            execSql = sql + " LIMIT :__limit";
+            execSql = com.sfi.scaffold.query.config.PaginationDialect.cap(dbType, sql);
             bind.put("__limit", max + 1);
         }
         List<T> rows = jdbc.query(execSql, bind, BeanPropertyRowMapper.newInstance(returnType));
@@ -417,7 +373,7 @@ public final class QueryUtilsX {
      * 原生 SQL 计数：{@code SELECT COUNT(*) FROM (sql)}。
      */
     public static long doNativeCount(String sql, Map<String, Object> params) {
-        return execute("native-count", Object.class, null, () -> doNativeCount0(sql, params));
+        return execute("native-count", Object.class, () -> doNativeCount0(sql, params));
     }
 
     private static long doNativeCount0(String sql, Map<String, Object> params) {
@@ -441,13 +397,6 @@ public final class QueryUtilsX {
         List<?> list = searcher().searchList(beanClass, mb.limit(0, max + 1).build());
         assertRowsWithinCap(list.size());
         return (List<T>) list;
-    }
-
-    private static <T> List<T> searchPlanAllCapped(Class<?> beanClass, MapBuilder mb) {
-        int max = props() == null ? 10000 : props().getMaxRows();
-        List<Map<String, Object>> rows = mapSearcher().searchList(beanClass, mb.limit(0, max + 1).build());
-        assertRowsWithinCap(rows.size());
-        return convertPlanRows(beanClass, rows);
     }
 
     private static void assertRowsWithinCap(int size) {
@@ -552,7 +501,8 @@ public final class QueryUtilsX {
     private static Set<String> allowedFields(Class<?> beanClass) {
         return FIELD_CACHE.computeIfAbsent(beanClass, c -> {
             Set<String> fields = new HashSet<>();
-            boolean plan = c.isAnnotationPresent(QueryPlanX.class);
+            // 计划类（@TableX）仅按字段声明校验；普通 VO 额外补充 getter 属性
+            boolean plan = c.isAnnotationPresent(TableX.class);
             for (Class<?> k = c; k != null && k != Object.class; k = k.getSuperclass()) {
                 for (Field f : k.getDeclaredFields()) {
                     if (Modifier.isStatic(f.getModifiers())) {
@@ -584,23 +534,31 @@ public final class QueryUtilsX {
         return pageable != null && pageable.isPaged();
     }
 
-    private static boolean isPlanWithReturnType(Class<?> beanClass) {
-        QueryPlanX plan = beanClass.getAnnotation(QueryPlanX.class);
-        return plan != null && plan.returnType() != Void.class && plan.returnType() != beanClass;
+    /**
+     * 从 controller 的 {@code @QueryPlanX} 声明中匹配计划类。
+     *
+     * @param controller     controller 实例（其类上或声明处需有 @QueryPlanX）
+     * @param planSimpleName 前端传入的计划名（计划类 SimpleName，忽略大小写）
+     * @return 匹配到的计划类
+     * @throws BizException 未声明 @QueryPlanX、或 plan 名不在白名单内
+     */
+    public static Class<?> resolvePlan(Object controller, String planSimpleName) {
+        return resolvePlan(controller.getClass(), planSimpleName);
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T> List<T> convertPlanRows(Class<?> planClass, List<Map<String, Object>> rows) {
-        QueryPlanX plan = planClass.getAnnotation(QueryPlanX.class);
-        Class<?> returnType = plan == null ? planClass : plan.returnType();
-        if (returnType == Void.class || returnType == planClass) {
-            return (List<T>) rows;
+    public static Class<?> resolvePlan(Class<?> controllerType, String planSimpleName) {
+        QueryPlanX api = controllerType.getAnnotation(QueryPlanX.class);
+        if (api == null) {
+            throw BizException.of(GlobalErrorCode.BAD_REQUEST,
+                    "该端点未声明 @QueryPlanX，不开放查询计划");
         }
-        List<T> results = new ArrayList<>(rows.size());
-        for (Map<String, Object> row : rows) {
-            results.add((T) OBJECT_MAPPER.convertValue(row, returnType));
+        for (Class<?> planClass : api.value()) {
+            if (planClass.getSimpleName().equalsIgnoreCase(planSimpleName)) {
+                return planClass;
+            }
         }
-        return results;
+        throw BizException.of(GlobalErrorCode.BAD_REQUEST,
+                "未知或未授权的查询计划: " + planSimpleName);
     }
 
     /**

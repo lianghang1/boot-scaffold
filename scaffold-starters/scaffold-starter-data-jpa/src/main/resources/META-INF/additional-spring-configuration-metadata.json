@@ -43,6 +43,18 @@
       "name": "scaffold.datasource.dynamic.datasources.{name}.driver-class-name",
       "type": "java.lang.String",
       "description": "名为 {name} 的数据源驱动类名，缺省由连接串自动推断."
+    },
+    {
+      "name": "scaffold.datasource.dynamic.datasources.{name}.db-type",
+      "type": "com.sfi.scaffold.common.database.DatabaseType",
+      "description": "名为 {name} 的数据源数据库类型（MYSQL/POSTGRESQL/ORACLE/SQLSERVER/DAMENG/KINGBASE/GAUSS/OCEANBASE）；国产库必填，缺省回落 scaffold.database.db-type.",
+      "defaultValue": null
+    },
+    {
+      "name": "scaffold.database.db-type",
+      "type": "com.sfi.scaffold.common.database.DatabaseType",
+      "description": "全局默认数据库类型（单库场景的唯一声明处，多库场景作兜底）；未声明时各通路维持 MySQL 系行为.",
+      "defaultValue": null
     }
   ]
 }

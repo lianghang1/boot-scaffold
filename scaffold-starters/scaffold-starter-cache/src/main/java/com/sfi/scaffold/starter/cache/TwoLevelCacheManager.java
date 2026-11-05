@@ -1,5 +1,6 @@
 package com.sfi.scaffold.starter.cache;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 
@@ -13,6 +14,11 @@ import java.util.concurrent.ConcurrentMap;
  *
  * <p>所有缓存共享同一套 L1（Caffeine）、Redis 客户端与 L2 TTL，仅以缓存名区分
  * key 空间；实例按名去重缓存于 {@code ConcurrentHashMap}，避免重复构建。</p>
+ *
+ * <p>L2 序列化使用 {@link com.sfi.scaffold.common.util.JsonUtils#buildTypedMapper}
+ * 构建的专用 mapper（copy 自注入实例，不污染共享配置），JSON 带 {@code @class}
+ * 类型标识——L2 命中反序列化时恢复业务原类型，避免 POJO 缓存命中后变成
+ * {@code LinkedHashMap} 导致强转失败。</p>
  *
  * @author lianghang
  */
@@ -32,7 +38,7 @@ public class TwoLevelCacheManager implements CacheManager {
                                 String keyPrefix, java.time.Duration l2Ttl) {
         this.l1 = l1;
         this.redisTemplate = redisTemplate;
-        this.objectMapper = objectMapper;
+        this.objectMapper = com.sfi.scaffold.common.util.JsonUtils.buildTypedMapper(objectMapper);
         this.keyPrefix = keyPrefix;
         this.l2Ttl = l2Ttl;
     }

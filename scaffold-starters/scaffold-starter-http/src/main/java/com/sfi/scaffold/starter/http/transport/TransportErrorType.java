@@ -20,6 +20,9 @@ public enum TransportErrorType {
     /** 网络 IO 异常（连接重置/断开），幂等请求可重试 */
     RETRYABLE_IO,
 
+    /** 响应体超过大小上限，读取中止——重试同样超限，无意义 */
+    RESPONSE_TOO_LARGE,
+
     /** 请求线程被中断，直接上抛不再重试 */
     INTERRUPTED
 }

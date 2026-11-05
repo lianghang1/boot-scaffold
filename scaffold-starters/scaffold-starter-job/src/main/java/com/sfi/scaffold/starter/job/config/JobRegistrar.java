@@ -2,10 +2,7 @@ package com.sfi.scaffold.starter.job.config;
 
 import com.sfi.scaffold.starter.job.AbstractJob;
 import com.sfi.scaffold.starter.job.JobConfigProvider;
-import com.sfi.scaffold.starter.job.JobRunLogSink;
-import com.sfi.scaffold.starter.job.JobRunRecorder;
-import com.sfi.scaffold.starter.job.JobMetrics;
-import com.sfi.scaffold.starter.protection.lock.RedisLockUtil;
+import com.sfi.scaffold.starter.job.JobExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.SmartInitializingSingleton;
@@ -44,11 +41,9 @@ public class JobRegistrar implements SmartInitializingSingleton {
     private final ApplicationContext applicationContext;
     private final Environment environment;
     private final TaskScheduler taskScheduler;
-    private final JobRunLogSink runLogSink;
-    private final RedisLockUtil lockUtil;
     private final JobConfigProvider configProvider;
-    /** 指标门面（条件装配绑定 micrometer 或 noop，隔离类加载） */
-    private final JobMetrics jobMetrics;
+    /** 双引擎共用执行包装：安装 Recorder 环境 + 执行 + 记指标（锁/日志/指标语义与引擎无关） */
+    private final JobExecutor jobExecutor;
 
     /** 运行中任务的调度句柄（jobKey → future），运行时刷新按 key 取消重排 */
     private final Map<String, ScheduledFuture<?>> scheduled = new ConcurrentHashMap<>();
@@ -56,22 +51,13 @@ public class JobRegistrar implements SmartInitializingSingleton {
     private final Map<String, String> codeCrons = new ConcurrentHashMap<>();
 
     public JobRegistrar(ApplicationContext applicationContext, Environment environment,
-                        TaskScheduler taskScheduler, JobRunLogSink runLogSink,
-                        RedisLockUtil lockUtil, JobConfigProvider configProvider) {
-        this(applicationContext, environment, taskScheduler, runLogSink, lockUtil, configProvider, null);
-    }
-
-    public JobRegistrar(ApplicationContext applicationContext, Environment environment,
-                        TaskScheduler taskScheduler, JobRunLogSink runLogSink,
-                        RedisLockUtil lockUtil, JobConfigProvider configProvider,
-                        JobMetrics jobMetrics) {
+                        TaskScheduler taskScheduler, JobConfigProvider configProvider,
+                        JobExecutor jobExecutor) {
         this.applicationContext = applicationContext;
         this.environment = environment;
         this.taskScheduler = taskScheduler;
-        this.runLogSink = runLogSink;
-        this.lockUtil = lockUtil;
         this.configProvider = configProvider;
-        this.jobMetrics = jobMetrics;
+        this.jobExecutor = jobExecutor;
     }
 
     @Override
@@ -114,7 +100,7 @@ public class JobRegistrar implements SmartInitializingSingleton {
     }
 
     /**
-     * 运行时应用新配置（改 cron / 启停），立即生效不重启。
+     * 运行时应用新配置（改 cron / 启停 / 参数），立即生效不重启。
      *
      * @return false 表示任务不在本实例注册表（未注册或外部引擎接管），调用方不应落表
      */
@@ -128,6 +114,8 @@ public class JobRegistrar implements SmartInitializingSingleton {
             old.cancel(false);
         }
         if (enabled) {
+            // 参数一并重读：运行时改配置全量生效，不留注册时快照
+            job.attachParams(resolveParams(jobKey));
             schedule(job, jobKey, cron);
         }
         log.info("[job] 配置已应用: {} cron={} enabled={}", jobKey, cron, enabled);
@@ -140,7 +128,7 @@ public class JobRegistrar implements SmartInitializingSingleton {
         if (job == null) {
             return false;
         }
-        taskScheduler.schedule(() -> executeWithRecorder(job), java.time.Instant.now());
+        taskScheduler.schedule(() -> jobExecutor.execute(job), java.time.Instant.now());
         return true;
     }
 
@@ -156,31 +144,6 @@ public class JobRegistrar implements SmartInitializingSingleton {
         return list;
     }
 
-    /**
-     * 在任务执行线程上安装/卸载运行环境（Recorder 为 TTL 语义，子任务经 ScaffoldExecutors 包装可透传）。
-     *
-     * <p>安装必须发生在执行线程：调度发生在 scheduler 线程池，
-     * 若在主线程 install，执行线程里 current() 恒为 null，锁与执行日志全部失效。</p>
-     */
-    private void executeWithRecorder(AbstractJob job) {
-        JobRunRecorder.install(runLogSink, lockUtil);
-        long start = System.currentTimeMillis();
-        try {
-            job.run();
-            recordMetrics(job, "success", System.currentTimeMillis() - start);
-        } catch (RuntimeException e) {
-            recordMetrics(job, "fail", System.currentTimeMillis() - start);
-            throw e;
-        } finally {
-            JobRunRecorder.uninstall();
-        }
-    }
-
-    /** 执行指标：委托 JobMetrics（micrometer 在场时打点，否则 noop 静默） */
-    private void recordMetrics(AbstractJob job, String outcome, long costMillis) {
-        jobMetrics.record(job.metadata().jobKey, outcome, costMillis);
-    }
-
     /** 解析任务参数：scaffold.job.jobs.<jobKey>.params（未配置返回空 Map） */
     private Map<String, String> resolveParams(String jobKey) {
         return Binder.get(environment)
@@ -189,7 +152,7 @@ public class JobRegistrar implements SmartInitializingSingleton {
     }
 
     private void schedule(AbstractJob job, String jobKey, String cron) {
-        ScheduledFuture<?> future = taskScheduler.schedule(() -> executeWithRecorder(job), new CronTrigger(cron));
+        ScheduledFuture<?> future = taskScheduler.schedule(() -> jobExecutor.execute(job), new CronTrigger(cron));
         scheduled.put(jobKey, future);
     }
 

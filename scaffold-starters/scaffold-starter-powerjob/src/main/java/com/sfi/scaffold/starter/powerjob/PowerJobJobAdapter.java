@@ -2,6 +2,7 @@ package com.sfi.scaffold.starter.powerjob;
 
 import com.sfi.scaffold.common.util.StringUtils;
 import com.sfi.scaffold.starter.job.AbstractJob;
+import com.sfi.scaffold.starter.job.JobExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -20,7 +21,8 @@ import java.util.regex.Pattern;
  * PowerJob 控制台建任务时：处理器全限定类名填 {@code com.sfi.scaffold.starter.powerjob.PowerJobJobAdapter}；
  * 任务参数填 {@code {"jobName":"对账任务"}}（与 @Job.name 一致），或直接填 @Job.name。</p>
  *
- * <p>触发后走 AbstractJob 的 final run() 模板：enabled 检查、分布式锁、执行日志、告警钩子全部保留；
+ * <p>触发后经 {@link JobExecutor} 进入 AbstractJob 的 final run() 模板：enabled 检查、
+ * 分布式锁、执行日志、告警钩子、执行指标与内置引擎完全一致（跳过加锁/缺 JPA 时自动降级）；
  * PowerJob 侧的重试与超时按控制台配置生效。</p>
  *
  * @author lianghang
@@ -34,9 +36,12 @@ public class PowerJobJobAdapter implements BasicProcessor {
             Pattern.compile("\"jobName\"\\s*:\\s*\"([^\"]+)\"");
 
     private final ApplicationContext applicationContext;
+    /** 双引擎共用执行包装：安装 Recorder 环境 + 执行 + 记指标，与内置引擎语义一致 */
+    private final JobExecutor jobExecutor;
 
-    public PowerJobJobAdapter(ApplicationContext applicationContext) {
+    public PowerJobJobAdapter(ApplicationContext applicationContext, JobExecutor jobExecutor) {
         this.applicationContext = applicationContext;
+        this.jobExecutor = jobExecutor;
     }
 
     @Override
@@ -52,8 +57,9 @@ public class PowerJobJobAdapter implements BasicProcessor {
         }
         log.info("[powerjob] 触发任务: {}（instanceId={}）",
                 jobName, context.getInstanceId());
-        // final run() 模板兜底：锁 + 执行日志 + 告警钩子
-        job.run();
+        // 经 JobExecutor 安装运行环境再执行：锁 + 执行日志 + 指标与内置引擎一致；
+        // 异常上抛由 PowerJob 标记实例失败并按控制台配置重试
+        jobExecutor.execute(job);
         return new ProcessResult(true, jobName + " 执行完成");
     }
 

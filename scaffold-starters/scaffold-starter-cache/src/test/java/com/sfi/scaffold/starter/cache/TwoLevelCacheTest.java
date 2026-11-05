@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
@@ -142,5 +143,74 @@ class TwoLevelCacheTest {
         Cache b = manager.getCache("other");
         assertSame(a1, a2);
         assertNotNull(b);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void l2HitShouldRestorePojoType() {
+        Cache writer = manager.getCache("typed");
+        writer.put("p1", new SamplePojo("abc", 3));
+        org.mockito.ArgumentCaptor<String> json = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(valueOps).set(contains("typed:p1"), json.capture(), eq(Duration.ofSeconds(60)));
+
+        // 模拟另一实例：全新 L1，直接走 L2 命中
+        TwoLevelCacheManager reader = new TwoLevelCacheManager(Caffeine.newBuilder().build(),
+                redisTemplate, objectMapper, "scaffold:cache:", Duration.ofSeconds(60));
+        when(valueOps.get(PREFIX + "typed:p1")).thenReturn(json.getValue());
+        Object value = reader.getCache("typed").get("p1").get();
+
+        assertEquals(SamplePojo.class, value.getClass(), "L2 命中应恢复业务原类型而非 LinkedHashMap");
+        assertEquals("abc", ((SamplePojo) value).getName());
+        assertEquals(3, ((SamplePojo) value).getAge());
+    }
+
+    @Test
+    void clearShouldScanDeleteL2AndInvalidateOwnL1() {
+        Cache cache = manager.getCache("dict");
+        Cache other = manager.getCache("other");
+        cache.put("k8", "v8");
+        other.put("k9", "v9");
+
+        cache.clear();
+
+        // 本缓存名 L1 已失效（mock 的 SCAN 未返回 key，L2 delete 不触发）
+        assertNull(cache.get("k8", String.class));
+        // 其他缓存名的 L1 条目不受牵连
+        assertEquals("v9", other.get("k9", String.class));
+        verify(redisTemplate).execute(any(org.springframework.data.redis.core.RedisCallback.class));
+    }
+
+    @Test
+    void clearShouldStillInvalidateL1WhenRedisFails() {
+        Cache cache = manager.getCache("dict");
+        cache.put("k10", "v10");
+        when(redisTemplate.execute(any(org.springframework.data.redis.core.RedisCallback.class)))
+                .thenThrow(new RuntimeException("redis down"));
+
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(cache::clear);
+        assertNull(cache.get("k10", String.class), "Redis 故障时 L1 失效照常完成");
+    }
+
+    /** 测试用 POJO：验证 L2 JSON 带类型标识的往返还原 */
+    static class SamplePojo {
+
+        private String name;
+        private int age;
+
+        SamplePojo() {
+        }
+
+        SamplePojo(String name, int age) {
+            this.name = name;
+            this.age = age;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public int getAge() {
+            return age;
+        }
     }
 }

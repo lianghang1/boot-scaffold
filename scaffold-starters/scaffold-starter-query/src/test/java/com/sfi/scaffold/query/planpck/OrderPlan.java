@@ -4,7 +4,7 @@ import com.sfi.scaffold.query.filter.OperatorX;
 import com.sfi.scaffold.query.plan.annotation.ColumnX;
 import com.sfi.scaffold.query.plan.annotation.JoinColumnX;
 import com.sfi.scaffold.query.plan.annotation.JoinTableX;
-import com.sfi.scaffold.query.plan.annotation.QueryPlanX;
+
 import com.sfi.scaffold.query.plan.annotation.FixedFilter;
 import com.sfi.scaffold.query.plan.annotation.TableX;
 
@@ -12,7 +12,6 @@ import com.sfi.scaffold.query.plan.annotation.TableX;
  * 多表联查计划：订单 → 用户（inner join）→ 部门（自定义 ON 条件），
  * 验证 @JoinTableX 可重复标注 + 固定条件 + inner join。
  */
-@QueryPlanX(name = "orderPlan", returnType = OrderView.class)
 @TableX(name = "t_order", alias = "o",
         filters = @FixedFilter(name = "deleted", op = OperatorX.EQ, value = "0", type = Integer.class))
 @JoinTableX(name = "t_user", alias = "u", joinType = "inner join",

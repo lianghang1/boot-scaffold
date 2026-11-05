@@ -3,14 +3,13 @@ package com.sfi.scaffold.query.planpck;
 import com.sfi.scaffold.query.plan.annotation.ColumnX;
 import com.sfi.scaffold.query.plan.annotation.JoinColumnX;
 import com.sfi.scaffold.query.plan.annotation.JoinTableX;
-import com.sfi.scaffold.query.plan.annotation.QueryPlanX;
+
 import com.sfi.scaffold.query.plan.annotation.FixedFilter;
 import com.sfi.scaffold.query.plan.annotation.TableX;
 
 /**
  * 计划一：用户联表计划（直接返回计划类实例），带固定条件 status=1。
  */
-@QueryPlanX(name = "userPlan")
 @TableX(name = "t_user", alias = "u",
         filters = @FixedFilter(name = "status", op = com.sfi.scaffold.query.filter.OperatorX.EQ,
                 value = "1", type = Integer.class))

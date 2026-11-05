@@ -1,6 +1,7 @@
 package com.sfi.scaffold.starter.job.config;
 
 import com.sfi.scaffold.starter.job.JobConfigProvider;
+import com.sfi.scaffold.starter.job.JobExecutor;
 import com.sfi.scaffold.starter.job.JobMetrics;
 import com.sfi.scaffold.starter.job.JobRunLogSink;
 import com.sfi.scaffold.starter.protection.lock.RedisLockUtil;
@@ -59,20 +60,25 @@ public class JobAutoConfiguration {
         return JobRegistrar.initScheduler(properties.getPoolSize());
     }
 
+    /** 双引擎共用执行包装：无条件注册——engine=none（PowerJob 接管调度）时同样需要 */
+    @Bean
+    public JobExecutor jobExecutor(ObjectProvider<JobRunLogSink> runLogSink,
+                                   ObjectProvider<RedisLockUtil> lockUtil,
+                                   JobMetrics jobMetrics) {
+        return new JobExecutor(runLogSink.getIfAvailable(), lockUtil.getIfAvailable(), jobMetrics);
+    }
+
     @Bean
     public JobRegistrar jobRegistrar(ApplicationContext applicationContext, Environment environment,
                                      TaskScheduler taskScheduler, JobProperties properties,
-                                     ObjectProvider<JobRunLogSink> runLogSink,
-                                     ObjectProvider<RedisLockUtil> lockUtil,
                                      ObjectProvider<JobConfigProvider> configProvider,
-                                     JobMetrics jobMetrics) {
+                                     JobExecutor jobExecutor) {
         if ("none".equalsIgnoreCase(properties.getEngine())) {
             // 外部调度平台接管：不注册，运行时管理走平台自带控制台
             return null;
         }
         return new JobRegistrar(applicationContext, environment, taskScheduler,
-                runLogSink.getIfAvailable(), lockUtil.getIfAvailable(),
-                configProvider.getIfAvailable(), jobMetrics);
+                configProvider.getIfAvailable(), jobExecutor);
     }
 
     /** micrometer 在场时绑定真实打点；嵌套类经 ASM 元数据判定条件，类加载安全 */

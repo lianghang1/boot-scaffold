@@ -58,8 +58,22 @@ public final class JsonUtils {
     private JsonUtils() {
     }
 
-    /** 统一配置共享单例：时区/日期格式 + JavaTimeModule + 容错特性，仅静态初始化调用一次。 */
+    /** 统一配置共享单例：仅静态初始化调用一次，规则见 {@link #applySharedRules}。 */
     private static ObjectMapper configure(ObjectMapper mapper) {
+        return applySharedRules(mapper);
+    }
+
+    /**
+     * 对任意 ObjectMapper 应用全工程统一 JSON 语义：时区 Asia/Shanghai；
+     * Date 与 java.time 统一按 {@code yyyy-MM-dd HH:mm:ss}（日期 {@code yyyy-MM-dd}、
+     * 时间 {@code HH:mm:ss}）读写；Long/long 序列化为字符串（JS 精度安全）；
+     * 反序列化容忍未知字段、未知枚举转 null、空串转 null；浮点统一 BigDecimal。
+     *
+     * <p>规则唯一出口：JsonUtils 单例（{@link #configure}）与 HTTP 报文 mapper
+     * （starter-web 经 {@code Jackson2ObjectMapperBuilder#postConfigurer} 接入）
+     * 共用本方法，调整语义只改这一处，防止两套配置漂移。</p>
+     */
+    public static ObjectMapper applySharedRules(ObjectMapper mapper) {
         mapper.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"));
         mapper.setDateFormat(new SimpleDateFormat(DATE_TIME_PATTERN));
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -98,6 +112,24 @@ public final class JsonUtils {
     /** 获取共享的单例 {@link ObjectMapper}（已按统一语义配置，只读使用，勿改动其配置）。 */
     public static ObjectMapper getObjectMapper() {
         return MAPPER;
+    }
+
+    /**
+     * 构建携带类型标识的专用 mapper（copy 自 base，不改动原配置）：
+     * 非 final 类型在 JSON 中写入 {@code @class}，反序列化时恢复业务原类型。
+     *
+     * <p>适用于「跨进程写出后需还原原类型」的场景，如两级缓存 L2 的 POJO 往返；
+     * 普通报文交互禁止使用——类型标识会侵入 JSON 结构。基于同一 base 多次构建
+     * 结果等价，调用方按需持有即可。</p>
+     */
+    public static ObjectMapper buildTypedMapper(ObjectMapper base) {
+        ObjectMapper mapper = base.copy();
+        mapper.activateDefaultTyping(
+                com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator.builder()
+                        .allowIfBaseType(Object.class).build(),
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY);
+        return mapper;
     }
 
     /** 对象转 JSON 字符串；null 返回 null。 */

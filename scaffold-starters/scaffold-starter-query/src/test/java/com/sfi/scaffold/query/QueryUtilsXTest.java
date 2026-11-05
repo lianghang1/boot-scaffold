@@ -25,8 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         "spring.datasource.url=jdbc:h2:mem:searchdb;DB_CLOSE_DELAY=-1",
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "scaffold.query.plan-packages=com.sfi.scaffold.query.planpck"
+        "spring.datasource.password="
 })
 class QueryUtilsXTest {
 

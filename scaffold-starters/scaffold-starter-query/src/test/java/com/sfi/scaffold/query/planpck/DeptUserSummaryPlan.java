@@ -3,13 +3,12 @@ package com.sfi.scaffold.query.planpck;
 import com.sfi.scaffold.query.plan.annotation.ColumnX;
 import com.sfi.scaffold.query.plan.annotation.JoinColumnX;
 import com.sfi.scaffold.query.plan.annotation.JoinTableX;
-import com.sfi.scaffold.query.plan.annotation.QueryPlanX;
+
 import com.sfi.scaffold.query.plan.annotation.TableX;
 
 /**
- * 计划二：returnType 与计划类不同，验证 Map → POJO 自动封装。
+ * 计划二：用户联表计划（用户 → 部门）。
  */
-@QueryPlanX(name = "deptUserSummary", returnType = DeptUserSummary.class)
 @TableX(name = "t_user", alias = "u")
 @JoinTableX(name = "t_dept", alias = "d",
         columns = @JoinColumnX(name = "id", referencedColumnName = "dept_id"))

@@ -10,7 +10,8 @@ import java.util.concurrent.Callable;
 /**
  * 两级缓存实现，L1 为进程内 Caffeine，L2 为跨实例共享的 Redis。
  *
- * <p>读路径按 L1 → L2 → loader 逐层回源，L2 命中后回填 L1；写路径直写 L2 并失效
+ * <p>读路径按 L1 → L2 → loader 逐层回源，L2 命中后回填 L1；L2 JSON 带 {@code @class}
+ * 类型标识（见 {@code TwoLevelCacheManager}），命中恢复业务原类型。写路径直写 L2 并失效
  * 本实例 L1，其他实例依赖 TTL 收敛，因此并非强一致——适合字典、配置类读多写少
  * 的数据，强一致场景请直接使用 Redis 或在业务层做双删。</p>
  *
@@ -19,6 +20,9 @@ import java.util.concurrent.Callable;
  * @author lianghang
  */
 public class TwoLevelCache extends AbstractValueAdaptingCache {
+
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(TwoLevelCache.class);
 
     private final String name;
     private final com.github.benmanes.caffeine.cache.Cache<String, Object> l1;
@@ -106,10 +110,35 @@ public class TwoLevelCache extends AbstractValueAdaptingCache {
         l1.invalidate(k);
     }
 
+    /**
+     * 全清本缓存名：SCAN 删除本前缀全部 L2 key，并精准失效 L1 中本缓存名的条目。
+     *
+     * <p>SCAN 游标分批不阻塞 Redis 主线程；Redis 故障时仅告警，L1 失效照常完成，
+     * 与「缓存故障不阻断主流程」语义一致。</p>
+     */
     @Override
     public void clear() {
-        // 仅清本实例 L1 与本前缀已知 key 的 L2（模糊清理由运维脚本处理）
-        l1.invalidateAll();
+        String pattern = keyPrefix + name + ":*";
+        java.util.Set<String> keys = new java.util.HashSet<>();
+        try {
+            redisTemplate.execute((org.springframework.data.redis.core.RedisCallback<Void>) connection -> {
+                try (org.springframework.data.redis.core.Cursor<byte[]> cursor = connection.scan(
+                        org.springframework.data.redis.core.ScanOptions.scanOptions()
+                                .match(pattern).count(200).build())) {
+                    while (cursor.hasNext()) {
+                        keys.add(new String(cursor.next(), java.nio.charset.StandardCharsets.UTF_8));
+                    }
+                }
+                return null;
+            });
+            if (!keys.isEmpty()) {
+                redisTemplate.delete(keys);
+            }
+        } catch (Exception e) {
+            log.warn("[cache] 缓存 {} 清理 L2 失败（L1 仍会失效）: {}", name, e.getMessage());
+        }
+        String ownPrefix = keyPrefix + name + ":";
+        l1.asMap().keySet().removeIf(k -> k.startsWith(ownPrefix));
     }
 
     private String key(Object key) {

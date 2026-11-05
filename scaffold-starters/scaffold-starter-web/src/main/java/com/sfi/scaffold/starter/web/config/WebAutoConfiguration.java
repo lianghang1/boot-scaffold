@@ -3,14 +3,8 @@ package com.sfi.scaffold.starter.web.config;
 import com.sfi.scaffold.common.constant.FilterOrder;
 import com.sfi.scaffold.common.util.CollUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalTimeDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.LocalTimeSerializer;
 import com.sfi.scaffold.common.util.DateUtils;
+import com.sfi.scaffold.common.util.JsonUtils;
 import com.sfi.scaffold.starter.web.async.AsyncExceptionHandler;
 import com.sfi.scaffold.starter.web.exception.GlobalExceptionHandler;
 import com.sfi.scaffold.starter.web.log.AccessLogAspect;
@@ -33,10 +27,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.concurrent.ThreadPoolExecutor;
 
 /**
@@ -57,13 +47,15 @@ import java.util.concurrent.ThreadPoolExecutor;
 @EnableConfigurationProperties({WebProperties.class, BizExecutorProperties.class})
 public class WebAutoConfiguration {
 
-    /** @deprecated 全局格式常量已收口 {@link DateUtils}，新代码直接引用 */
-    @Deprecated
-    public static final String DATE_TIME_PATTERN = DateUtils.DATE_TIME_PATTERN;
-    /** @deprecated 全局格式常量已收口 {@link DateUtils} */
-    @Deprecated
-    public static final String DATE_PATTERN = DateUtils.DATE_PATTERN;
-    public static final String TIME_PATTERN = "HH:mm:ss";
+    /**
+     * Jackson 统一配置：经 postConfigurer 把 {@link JsonUtils#applySharedRules} 全量语义
+     * （Long→字符串、时间格式、时区、容错特性）应用到 MVC 全局 mapper——
+     * 规则唯一出口在 JsonUtils，防止内部 JSON 与 HTTP 报文两套配置漂移。
+     */
+    @Bean
+    public Jackson2ObjectMapperBuilderCustomizer scaffoldJacksonCustomizer() {
+        return builder -> builder.postConfigurer(JsonUtils::applySharedRules);
+    }
 
     /**
      * @Async 专属池 {@code scaffoldAsyncExecutor}：经 AsyncConfigurer 显式指定，不依赖
@@ -126,28 +118,6 @@ public class WebAutoConfiguration {
         registration.addUrlPatterns("/*");
         registration.setName("xssFilter");
         return registration;
-    }
-
-    /**
-     * Jackson 统一配置：Long/long 序列化为字符串（防止 JS 精度丢失），时间统一格式、时区 GMT+8。
-     */
-    @Bean
-    public Jackson2ObjectMapperBuilderCustomizer scaffoldJacksonCustomizer() {
-        DateTimeFormatter dateTime = DateTimeFormatter.ofPattern(DATE_TIME_PATTERN);
-        DateTimeFormatter date = DateTimeFormatter.ofPattern(DATE_PATTERN);
-        DateTimeFormatter time = DateTimeFormatter.ofPattern(TIME_PATTERN);
-        return builder -> {
-            builder.simpleDateFormat(DATE_TIME_PATTERN);
-            builder.timeZone("GMT+8");
-            builder.serializerByType(LocalDateTime.class, new LocalDateTimeSerializer(dateTime));
-            builder.serializerByType(LocalDate.class, new LocalDateSerializer(date));
-            builder.serializerByType(LocalTime.class, new LocalTimeSerializer(time));
-            builder.deserializerByType(LocalDateTime.class, new LocalDateTimeDeserializer(dateTime));
-            builder.deserializerByType(LocalDate.class, new LocalDateDeserializer(date));
-            builder.deserializerByType(LocalTime.class, new LocalTimeDeserializer(time));
-            builder.serializerByType(Long.class, ToStringSerializer.instance);
-            builder.serializerByType(Long.TYPE, ToStringSerializer.instance);
-        };
     }
 
     @Bean

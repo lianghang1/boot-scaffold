@@ -53,6 +53,13 @@ public class DynamicDataSourceProperties {
 
         private String driverClassName;
 
+        /**
+         * 数据库类型（国产库必填，主流库可省略）；
+         * 缺省回落全局 {@code scaffold.database.db-type}，再缺省按 MySQL 系处理。
+         * 消费方：JPA dialect 派生、Bean Searcher 方言桥接、doNativeQuery 分页。
+         */
+        private com.sfi.scaffold.common.database.DatabaseType dbType;
+
         public String getUrl() {
             return url;
         }
@@ -83,6 +90,14 @@ public class DynamicDataSourceProperties {
 
         public void setDriverClassName(String driverClassName) {
             this.driverClassName = driverClassName;
+        }
+
+        public com.sfi.scaffold.common.database.DatabaseType getDbType() {
+            return dbType;
+        }
+
+        public void setDbType(com.sfi.scaffold.common.database.DatabaseType dbType) {
+            this.dbType = dbType;
         }
     }
 }
