@@ -40,6 +40,7 @@ class TenantScopeTest {
     @Test
     void executeWithLoginShouldSwapTenantAndRestorePreviousIdentity() {
         LoginUser original = user("t1");
+        original.getAttributes().put("deptId", "88");
         LoginContext.set(original);
 
         AtomicReference<String> seen = new AtomicReference<>();
@@ -51,6 +52,8 @@ class TenantScopeTest {
         assertThat(restored.getTenantId()).isEqualTo("t1");
         assertThat(restored.getAccountId()).isEqualTo(original.getAccountId());
         assertThat(restored.getPermissions()).isEqualTo(original.getPermissions());
+        // 切租户视角不丢业务扩展槽
+        assertThat(restored.getAttributes()).containsEntry("deptId", "88");
     }
 
     @Test

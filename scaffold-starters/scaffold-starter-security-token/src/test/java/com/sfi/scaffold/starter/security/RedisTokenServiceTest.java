@@ -1,6 +1,7 @@
 package com.sfi.scaffold.starter.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sfi.scaffold.starter.security.identity.LoginUser;
 import com.sfi.scaffold.starter.security.token.RedisTokenService;
 import com.sfi.scaffold.starter.security.token.SessionInfo;
 import org.junit.jupiter.api.BeforeEach;
@@ -115,6 +116,19 @@ class RedisTokenServiceTest {
         service.revoke("tok");
         verify(redisTemplate).delete(contains("tok"));
         verify(setOps).remove(contains("auth:account"), eq("tok"));
+    }
+
+    @Test
+    void attributesShouldSurviveJsonRoundTripAndIdentityRebuild() throws Exception {
+        // 业务扩展槽：登录写入 → 会话 JSON 存取 → 请求重建身份，全程不丢
+        LoginUser user = new LoginUser();
+        user.setAccountId(1L);
+        user.setAccountNo("alice");
+        user.setDevice("web");
+        user.getAttributes().put("deptId", "88");
+        when(valueOps.get(anyString())).thenReturn(objectMapper.writeValueAsString(SessionInfo.from(user)));
+        LoginUser rebuilt = service.resolve("tok").toLoginUser();
+        assertEquals("88", rebuilt.getAttributes().get("deptId"));
     }
 
     @Test

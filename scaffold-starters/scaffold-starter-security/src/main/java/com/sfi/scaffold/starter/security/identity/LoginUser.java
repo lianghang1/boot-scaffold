@@ -2,6 +2,8 @@ package com.sfi.scaffold.starter.security.identity;
 
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -42,6 +44,16 @@ public class LoginUser implements Serializable {
      * 三条过滤通路的统一租户来源。</p>
      */
     private String tenantId;
+
+    /**
+     * 业务扩展槽：各体系自定义的附加字段（部门、等级、组织编码等），值统一 String。
+     *
+     * <p>会话经 Redis JSON 序列化存取，Map 值无类型信息（复杂对象读回即退化为
+     * LinkedHashMap），故约束 String——业务需要结构化数据时自行存 JSON 串并解析。
+     * 框架级字段（如 tenantId）走一线字段，业务差异字段走本槽；随
+     * {@code SessionInfo.from/toLoginUser} 互转透传，请求重建身份时不丢失。</p>
+     */
+    private Map<String, String> attributes = new LinkedHashMap<>();
 
     /**
      * 系统任务身份工厂：定时任务、消息消费等无 HTTP 请求的后台线程使用。
@@ -151,5 +163,13 @@ public class LoginUser implements Serializable {
 
     public void setTenantId(String tenantId) {
         this.tenantId = tenantId;
+    }
+
+    public Map<String, String> getAttributes() {
+        return attributes;
+    }
+
+    public void setAttributes(Map<String, String> attributes) {
+        this.attributes = attributes == null ? Collections.emptyMap() : attributes;
     }
 }

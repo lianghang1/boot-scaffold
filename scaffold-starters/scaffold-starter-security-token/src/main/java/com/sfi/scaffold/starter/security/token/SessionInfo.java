@@ -5,6 +5,8 @@ import com.sfi.scaffold.starter.security.identity.LoginUser;
 
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -36,6 +38,9 @@ public class SessionInfo implements Serializable {
     /** 租户 ID（null = 平台身份），随会话存取，与 LoginUser.tenantId 同源透传 */
     private String tenantId;
 
+    /** 业务扩展槽（值统一 String），与 LoginUser.attributes 同源透传 */
+    private Map<String, String> attributes = new LinkedHashMap<>();
+
     /** 登录时间（epoch millis） */
     private long loginTime;
 
@@ -49,6 +54,7 @@ public class SessionInfo implements Serializable {
         s.permissions = user.getPermissions();
         s.device = user.getDevice();
         s.tenantId = user.getTenantId();
+        s.attributes = user.getAttributes() == null ? Collections.emptyMap() : user.getAttributes();
         s.loginTime = System.currentTimeMillis();
         return s;
     }
@@ -63,6 +69,7 @@ public class SessionInfo implements Serializable {
         u.setPermissions(permissions);
         u.setDevice(device);
         u.setTenantId(tenantId);
+        u.setAttributes(attributes);
         return u;
     }
 
@@ -128,6 +135,14 @@ public class SessionInfo implements Serializable {
 
     public void setTenantId(String tenantId) {
         this.tenantId = tenantId;
+    }
+
+    public Map<String, String> getAttributes() {
+        return attributes;
+    }
+
+    public void setAttributes(Map<String, String> attributes) {
+        this.attributes = attributes == null ? Collections.emptyMap() : attributes;
     }
 
     public long getLoginTime() {

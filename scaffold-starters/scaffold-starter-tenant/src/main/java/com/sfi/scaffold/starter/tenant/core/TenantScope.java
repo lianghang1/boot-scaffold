@@ -73,6 +73,7 @@ public final class TenantScope {
         scoped.setPermissions(source.getPermissions());
         scoped.setDevice(source.getDevice());
         scoped.setTenantId(tenantId);
+        scoped.setAttributes(source.getAttributes());
         return scoped;
     }
 

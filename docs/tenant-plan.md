@@ -11,7 +11,7 @@
 | D2 | 直连 SQL 边界 | 业务绕过脚手架直接用 JdbcTemplate 写 SQL **不管租户**——使用者自知（业主拍板） |
 | D3 | 管理面 | 租户开通/套餐/租户内角色归业务系统，脚手架**只保证执行层不漏**，不建租户表 |
 | D4 | 隔离语义 | 默认全过滤（黑名单语义：未排除即过滤），排除走配置名单 + 注解 |
-| D5（修订） | 用户上下文 | tenantId 为 `LoginUser`/`SessionInfo` **一线字段**（String，null = 平台身份）；`attributes` 扩展槽正交保留给业务自定义字段 |
+| D5（修订） | 用户上下文 | tenantId 为 `LoginUser`/`SessionInfo` **一线字段**（String，null = 平台身份）；`attributes` 扩展槽已实现（`Map<String, String>`，值统一 String 防会话 JSON 反序列化类型退化；随 `from/toLoginUser` 互转透传与 `TenantScope` 切换保留），业务自定义字段（部门/等级等）走此槽 |
 | D6 | 开关模式 | **opt-in**：`scaffold.tenant.enabled` 默认 false；未引 starter / 未开启时三通路零影响 |
 | D7（修订） | 列名与类型 | 列名**不做配置级重命名**：JPA 由实体 `@Filter` condition 声明、BS 由计划类字段映射声明（Hibernate 5.6 机制所限，配置列名在两条通路均无处落地）；值类型脚手架不约束（String 承载） |
 | D8（修订） | 登录获取 | 框架不假设业务用户表：业务登录逻辑查表带出租户放入 SessionInfo.tenantId（一线字段），框架只负责传递与注入 |
