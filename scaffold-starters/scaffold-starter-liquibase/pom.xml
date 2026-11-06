@@ -26,9 +26,21 @@
             <artifactId>liquibase-core</artifactId>
         </dependency>
 
+        <!-- EMF 依赖边按 EntityManagerFactory 类型识别，仅做类型匹配，不引入 JPA 行为 -->
+        <dependency>
+            <groupId>javax.persistence</groupId>
+            <artifactId>javax.persistence-api</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-jdbc</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
