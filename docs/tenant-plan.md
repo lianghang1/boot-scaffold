@@ -1,6 +1,6 @@
 # scaffold-starter-tenant 多租户方案（已实施）
 
-> 状态：**已实施**（2026-11-06，全模块测试 24/24 绿）；实施过程中的两处实测修订见 D7/D13。
+> 状态：**已实施**（2026-11-06，全模块测试 24/24 绿）；实施过程中的两处实测修订见 D7/D13；实施后的接入形态讨论收口见 D15。
 > 决策依据：2026-11 调研（芋道官方文档、Bean Searcher 作者 issue 答复、Hibernate 官方文档、JeecgBoot/RuoYi-Vue-Plus 对照）。
 
 ## 1. 决策记录
@@ -18,6 +18,7 @@
 | D9' | findById 绕过过滤 | 过滤式切面：租户不一致返回空 + WARN 审计（防存在性探测，非 403），`@TenantIgnore` 豁免 |
 | D13（修订） | JPA 接入形态 | 实体**直写** `@Filter(name = "scaffold_tenant", condition = "tenant_id = :tenantId")` + 可选 `@TenantIdField`（findById 比对用）。实测 Hibernate 5.6 **不支持 @Filter 的 meta-annotation 组合**（原 @TenantFilter 组合注解方案被测试推翻，已删除） |
 | D14 | 租户上下文承载 | **不另立 TenantContext TTL**：租户上下文 = `LoginContext`（tenantId 一线字段随身份装载）；定时任务/MQ 用 `LoginContext.set` + `TenantScope.execute(tenantId, runnable)`（try/finally 防泄漏）；`@TenantIgnore` 豁免标记用 tenant starter 内独立 ThreadLocal |
+| D15 | 接入形态收口 | **保持现状，不做增强**：`@Filter`（实体）/ tenantId 字段（计划类）即全部声明，与其他映射标注（`@Entity`/`@ColumnX`）同级别的心智成本。讨论中评估并**否决**的方案：TenantEntity/TenantPlan 基类（继承也是声明动作，负担只是换形态）、EMF 元数据扫描注册表 + WARN 对账（用一台机器防一个低风险事件，成本盖过收益）、启动期 fail-fast 校验（业主否决：等于强制）、ArchUnit 测试期卡点（依赖业务测试基建）。心智模型一句话：**数据在哪，映射注解就写在哪** |
 
 ## 2. 架构：新增 scaffold-starter-tenant
 
@@ -47,6 +48,13 @@
 - Redis key 租户后缀——**不需要**：幂等/限流键已含 accountId（全局唯一），跨租户天然无碰撞
 - SaaS 多域名解析——网关/前端定租户后走请求头，脚手架只收 header
 - 物理隔离——已有 dynamic 多数据源能力，业务自行组合；已知坑（连接池膨胀、事务内切库）写入文档劝退
+- 接入形态增强（D15，全部否决记录在案，防止后人重走）：TenantEntity/TenantPlan 基类、租户表注册表 + WARN 对账、启动期/测试期校验——"忘写一行"的后果与忘写其他映射标注同级，不为它引入框架级机器
+
+### 2.5 已实测的机制边界（防重走弯路）
+
+1. **Hibernate 5.6 不展开 @Filter 的 meta-annotation**——自定义组合注解（如 @TenantFilter 内标 @Filter）在实体上静默不生效（测试证伪），必须直写 `@Filter`
+2. **BS 条件注入必须依托计划类字段**——ParamFilter 无法凭空注入没有字段映射的条件；计划类漏写 tenantId 字段时框架无法感知该表"应过滤"（脚手架不建租户表，判定信息只能来自声明）
+3. **注解值是编译期常量**——`@Filter` condition 列名不可由配置注入，故列名无配置项（D7）
 
 ## 3. 边界声明（写入文档与 README）
 
