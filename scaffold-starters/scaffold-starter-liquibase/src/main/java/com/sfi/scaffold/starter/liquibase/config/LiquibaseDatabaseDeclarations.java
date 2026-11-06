@@ -19,8 +19,8 @@ import java.util.Set;
  *     → 全局 scaffold.database.db-type
  *     → 不声明（主流库由 Liquibase 官方自识别）
  * </pre>
- * 同时读取数据源块内联的 liquibase 配置（{@code datasources.<name>.liquibase.change-log}），
- * 该键空间归本 starter 消费，data-jpa 的属性类不感知。
+ * 同时读取数据源块内联的 liquibase 配置（{@code datasources.<name>.liquibase.change-log}）：
+ * 键位结构由 data-jpa 的 Conf.Liquibase 声明（供 IDE 校验），运行时消费归本 starter。
  */
 public final class LiquibaseDatabaseDeclarations {
 

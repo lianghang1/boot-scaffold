@@ -6,8 +6,8 @@ import java.util.Map;
 /**
  * 动态数据源配置项，前缀 {@code scaffold.datasource.dynamic}。
  *
- * <p>因以 {@code @Bean} 方式声明（非 {@code @ConfigurationProperties} 扫描），
- * IDE 补全提示由 additional-spring-configuration-metadata.json 手工维护。</p>
+ * <p>以 {@code @Bean + @ConfigurationProperties} 方式声明，IDE 依据返回类型校验配置键；
+ * additional-spring-configuration-metadata.json 补充 {name} 占位说明。</p>
  *
  * @author lianghang
  */
@@ -59,6 +59,36 @@ public class DynamicDataSourceProperties {
          * 消费方：JPA dialect 派生、Bean Searcher 方言桥接、doNativeQuery 分页。
          */
         private com.sfi.scaffold.common.database.DatabaseType dbType;
+
+        /**
+         * Liquibase 迁移配置占位（多库场景 {@code liquibase.change-log} 内联于数据源块）。
+         * <p>键空间归 scaffold-starter-liquibase 消费——该 starter 启动时直接从 Environment
+         * 绑定执行迁移；本字段仅作结构声明让 IDE 配置校验通过，data-jpa 不读取、不使用。</p>
+         */
+        private Liquibase liquibase = new Liquibase();
+
+        public Liquibase getLiquibase() {
+            return liquibase;
+        }
+
+        public void setLiquibase(Liquibase liquibase) {
+            this.liquibase = liquibase;
+        }
+
+        /** Liquibase 内联配置键位声明，行为见 scaffold-starter-liquibase。 */
+        public static class Liquibase {
+
+            /** changelog 主文件位置（classpath:/file:），仅声明，消费方为 scaffold-starter-liquibase。 */
+            private String changeLog;
+
+            public String getChangeLog() {
+                return changeLog;
+            }
+
+            public void setChangeLog(String changeLog) {
+                this.changeLog = changeLog;
+            }
+        }
 
         public String getUrl() {
             return url;
