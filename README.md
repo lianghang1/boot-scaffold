@@ -15,6 +15,7 @@ boot-scaffold/
     ├── starter-ip            IP 归属地解析
     ├── starter-data-jpa      数据访问：BaseEntity / 雪花 ID / 乐观锁 / 多数据源 @TargetDataSource
     ├── starter-liquibase     Liquibase 集成：国产库 Database 派生 / 多数据源按库迁移（可选）
+    ├── starter-tenant        多租户：JPA @Filter / Bean Searcher / findById 兜底三通路（opt-in 可选）
     ├── starter-query         动态检索（Bean Searcher 封装 + doNativeQuery）
     ├── starter-security      认证鉴权：token 会话(Redis) / 三入口安全链 / openapi 签名
     ├── starter-cache         Caffeine L1 + Redis L2 两级缓存

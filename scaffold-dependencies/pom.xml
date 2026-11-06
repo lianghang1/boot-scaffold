@@ -84,6 +84,16 @@
             </dependency>
             <dependency>
                 <groupId>com.sfi.scaffold</groupId>
+                <artifactId>scaffold-starter-liquibase</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sfi.scaffold</groupId>
+                <artifactId>scaffold-starter-tenant</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sfi.scaffold</groupId>
                 <artifactId>scaffold-starter-query</artifactId>
                 <version>${project.version}</version>
             </dependency>

@@ -33,6 +33,9 @@ public class SessionInfo implements Serializable {
 
     private String device;
 
+    /** 租户 ID（null = 平台身份），随会话存取，与 LoginUser.tenantId 同源透传 */
+    private String tenantId;
+
     /** 登录时间（epoch millis） */
     private long loginTime;
 
@@ -45,6 +48,7 @@ public class SessionInfo implements Serializable {
         s.roles = user.getRoles();
         s.permissions = user.getPermissions();
         s.device = user.getDevice();
+        s.tenantId = user.getTenantId();
         s.loginTime = System.currentTimeMillis();
         return s;
     }
@@ -58,6 +62,7 @@ public class SessionInfo implements Serializable {
         u.setRoles(roles);
         u.setPermissions(permissions);
         u.setDevice(device);
+        u.setTenantId(tenantId);
         return u;
     }
 
@@ -115,6 +120,14 @@ public class SessionInfo implements Serializable {
 
     public void setDevice(String device) {
         this.device = device;
+    }
+
+    public String getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 
     public long getLoginTime() {

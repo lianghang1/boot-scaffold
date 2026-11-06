@@ -34,6 +34,16 @@ public class LoginUser implements Serializable {
     private String device;
 
     /**
+     * 租户 ID（null = 平台身份，租户过滤全放行）。
+     *
+     * <p>由业务登录逻辑查表填入，随认证链装入会话并在请求重建身份时自动就位；
+     * 定时任务 / MQ 消费等无 HTTP 场景经 {@code TenantScope.execute} 或
+     * {@code LoginContext.set} 携带。scaffold-starter-tenant 在场时作为
+     * 三条过滤通路的统一租户来源。</p>
+     */
+    private String tenantId;
+
+    /**
      * 系统任务身份工厂：定时任务、消息消费等无 HTTP 请求的后台线程使用。
      *
      * <p>accountId 固定 0（不入库的身份），accountType 取 OPERATOR（内部操作方），
@@ -133,5 +143,13 @@ public class LoginUser implements Serializable {
 
     public void setDevice(String device) {
         this.device = device;
+    }
+
+    public String getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 }

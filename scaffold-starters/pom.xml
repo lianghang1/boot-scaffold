@@ -21,6 +21,7 @@
         <module>scaffold-starter-ip</module>
         <module>scaffold-starter-data-jpa</module>
         <module>scaffold-starter-liquibase</module>
+        <module>scaffold-starter-tenant</module>
         <module>scaffold-starter-query</module>
         <module>scaffold-starter-security</module>
         <module>scaffold-starter-security-token</module>
