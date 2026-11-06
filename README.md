@@ -101,7 +101,7 @@ scaffold:
 
 - 国产库自动借壳：金仓 / OpenGauss → PostgreSQL 方言，OceanBase → MySQL 方言；达梦探测社区 liquibase-dm（缺失 WARN 跳过，不硬绑社区包）
 - 与 `spring.jpa.hibernate.ddl-auto` 并存时 WARN：schema 管理权归 Liquibase，建议显式关闭
-- 未引 liquibase-core / 未配 change-log → 零影响
+- liquibase-core 随 starter 传递（无需单独引入）；未配 change-log 的库零影响
 
 ### 多租户（opt-in）
 

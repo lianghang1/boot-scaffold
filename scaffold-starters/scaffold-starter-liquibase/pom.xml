@@ -20,11 +20,10 @@
             <artifactId>scaffold-common</artifactId>
         </dependency>
 
-        <!-- 宿主自行决定是否引入 Liquibase（optional：引 starter 不强制带 Liquibase） -->
+        <!-- Liquibase 是本 starter 的能力本体（叶子 starter，无被连带传递场景），引即得 -->
         <dependency>
             <groupId>org.liquibase</groupId>
             <artifactId>liquibase-core</artifactId>
-            <optional>true</optional>
         </dependency>
 
         <dependency>
