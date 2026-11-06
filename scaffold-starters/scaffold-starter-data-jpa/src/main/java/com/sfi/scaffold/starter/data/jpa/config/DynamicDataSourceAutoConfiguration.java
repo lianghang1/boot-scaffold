@@ -41,7 +41,7 @@ public class DynamicDataSourceAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(DataSource.class)
-    public DataSource dynamicRoutingDataSource(DynamicDataSourceProperties properties) {
+    public DynamicRoutingDataSource dynamicRoutingDataSource(DynamicDataSourceProperties properties) {
         Map<String, DynamicDataSourceProperties.Conf> confs = properties.getDatasources();
         if (confs.isEmpty()) {
             throw new IllegalStateException(
