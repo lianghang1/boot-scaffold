@@ -38,9 +38,6 @@ public final class RedisKeys {
     /** 登录失败计数（IP 维度滑动窗口） */
     public static final String SECURITY_LOGIN_IP = "scaffold:security:login:ip:";
 
-    /** OpenAPI 签名 nonce 查重（防重放） */
-    public static final String OPENAPI_NONCE = "scaffold:openapi:nonce:";
-
     /** 通用缓存（starter-cache） */
     public static final String CACHE = "scaffold:cache:";
 

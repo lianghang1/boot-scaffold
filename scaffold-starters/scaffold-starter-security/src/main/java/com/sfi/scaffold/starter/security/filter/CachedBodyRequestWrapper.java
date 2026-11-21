@@ -13,8 +13,8 @@ import java.nio.charset.StandardCharsets;
 /**
  * 缓存请求体内容的 HttpServletRequest 包装器。
  *
- * <p>openapi 过滤器验签必须先读 body，而流只能消费一次——包装后内容驻留内存，
- * Controller 仍可再次读取，验签与业务处理互不干扰。</p>
+ * <p>过滤器若需先读 body（如验签、加解密），而流只能消费一次——包装后内容驻留内存，
+ * Controller 仍可再次读取，前置处理与业务处理互不干扰。</p>
  *
  * @author lianghang
  */

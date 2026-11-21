@@ -109,11 +109,6 @@
             </dependency>
             <dependency>
                 <groupId>com.sfi.scaffold</groupId>
-                <artifactId>scaffold-starter-security-openapi</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sfi.scaffold</groupId>
                 <artifactId>scaffold-starter-cache</artifactId>
                 <version>${project.version}</version>
             </dependency>

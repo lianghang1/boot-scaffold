@@ -17,7 +17,7 @@ boot-scaffold/
     ├── starter-liquibase     Liquibase 集成：国产库 Database 派生 / 多数据源按库迁移（可选）
     ├── starter-tenant        多租户：JPA @Filter / Bean Searcher / findById 兜底三通路（opt-in 可选）
     ├── starter-query         动态检索（Bean Searcher 封装 + doNativeQuery；复杂 SQL 优先内联 @SearchBean）
-    ├── starter-security      认证鉴权：token 会话(Redis) / 三入口安全链 / openapi 签名
+    ├── starter-security      认证鉴权：token 会话(Redis) / 身份上下文 / 权限校验
     ├── starter-cache         Caffeine L1 + Redis L2 两级缓存
     ├── starter-redis         Redis 客户端封装
     ├── starter-protection    限流 / 幂等 / 分布式锁

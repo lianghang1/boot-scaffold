@@ -32,7 +32,7 @@ public class LoginUser implements Serializable {
 
     private Set<String> permissions = Collections.emptySet();
 
-    /** 登录设备/来源：internal / online / openapi:{appKey} */
+    /** 登录设备/来源：由认证阶段填入，如 internal / online / app:{accountNo} */
     private String device;
 
     /**
