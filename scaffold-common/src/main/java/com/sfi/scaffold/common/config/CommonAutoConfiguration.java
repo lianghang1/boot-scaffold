@@ -48,7 +48,6 @@ public class CommonAutoConfiguration {
             reportIfPresent(log, env, "scaffold.job.engine", "调度引擎");
             reportIfPresent(log, env, "scaffold.push.enabled", "SSE 推送");
             reportIfPresent(log, env, "scaffold.ws.enabled", "WebSocket");
-            reportIfPresent(log, env, "scaffold.http.enabled", "HTTP 客户端");
             reportIfPresent(log, env, "scaffold.data.worker-id", "雪花 worker-id");
             log.info("[scaffold] 条件装配明细见 /actuator/conditions；配置项总表见 README");
         };

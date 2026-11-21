@@ -1,0 +1,131 @@
+package com.sfi.scaffold.http.transport;
+
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * 基于 okhttp 的传输层默认实现。
+ *
+ * <p>每个请求应用 {@link TransportRequest} 自带的超时覆盖全局配置；
+ * 连接池与客户端单例复用（由装配层持有），读超时按请求粒度可变。</p>
+ *
+ * @author lianghang
+ */
+public class OkHttpTransport implements HttpTransport {
+
+    /** 默认响应体上限 32MB：防对端失控返回大文件把内存打爆 */
+    public static final long DEFAULT_MAX_RESPONSE_BYTES = 32L * 1024 * 1024;
+
+    private final OkHttpClient client;
+    private final long maxResponseBytes;
+
+    public OkHttpTransport(int connectTimeoutMs, int readTimeoutMs) {
+        this(connectTimeoutMs, readTimeoutMs, DEFAULT_MAX_RESPONSE_BYTES);
+    }
+
+    public OkHttpTransport(int connectTimeoutMs, int readTimeoutMs, long maxResponseBytes) {
+        this.client = new OkHttpClient.Builder()
+                .connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
+                .readTimeout(readTimeoutMs, TimeUnit.MILLISECONDS)
+                .build();
+        this.maxResponseBytes = maxResponseBytes;
+    }
+
+    public OkHttpTransport(OkHttpClient client) {
+        this.client = client;
+        this.maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES;
+    }
+
+    @Override
+    public TransportResponse execute(TransportRequest request) {
+        Request.Builder builder = new Request.Builder().url(request.getUrl());
+        for (Map.Entry<String, String> header : request.getHeaders().entrySet()) {
+            builder.header(header.getKey(), header.getValue());
+        }
+        if (request.hasBody()) {
+            MediaType mediaType = MediaType.parse(
+                    request.getContentType() == null ? "application/json" : request.getContentType());
+            RequestBody body = RequestBody.create(mediaType, request.getBody());
+            builder.method(request.getMethod(), body);
+        } else if ("POST".equalsIgnoreCase(request.getMethod())
+                || "PUT".equalsIgnoreCase(request.getMethod())
+                || "PATCH".equalsIgnoreCase(request.getMethod())
+                || "DELETE".equalsIgnoreCase(request.getMethod())) {
+            builder.method(request.getMethod(), RequestBody.create((MediaType) null, new byte[0]));
+        } else {
+            builder.method(request.getMethod(), null);
+        }
+
+        OkHttpClient perRequest = request.getReadTimeoutMs() > 0
+                ? client.newBuilder()
+                        .connectTimeout(request.getConnectTimeoutMs(), TimeUnit.MILLISECONDS)
+                        .readTimeout(request.getReadTimeoutMs(), TimeUnit.MILLISECONDS)
+                        .build()
+                : client;
+
+        try (Response response = perRequest.newCall(builder.build()).execute()) {
+            byte[] body = readBodyLimited(response, request);
+            okhttp3.Headers headers = response.headers();
+            java.util.Map<String, String> headerMap = new java.util.LinkedHashMap<String, String>();
+            for (int i = 0; i < headers.size(); i++) {
+                headerMap.put(headers.name(i), headers.value(i));
+            }
+            return new TransportResponse(response.code(), headerMap, body);
+        } catch (IOException e) {
+            throw mapError(e, request);
+        }
+    }
+
+    /**
+     * 限额读取响应体：超 {@code maxResponseBytes} 立即中止并抛
+     * {@link TransportErrorType#RESPONSE_TOO_LARGE}，防止对端失控响应打爆内存。
+     */
+    private byte[] readBodyLimited(Response response, TransportRequest request) throws IOException {
+        if (response.body() == null) {
+            return new byte[0];
+        }
+        long contentLength = response.body().contentLength();
+        if (contentLength > maxResponseBytes) {
+            throw new TransportException(TransportErrorType.RESPONSE_TOO_LARGE,
+                    "HTTP 响应超过上限: " + request.getMethod() + " " + request.getUrl()
+                            + " contentLength=" + contentLength + " max=" + maxResponseBytes);
+        }
+        java.io.InputStream in = response.body().byteStream();
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(
+                contentLength > 0 && contentLength <= maxResponseBytes ? (int) contentLength : 8192);
+        byte[] buffer = new byte[8192];
+        long total = 0;
+        int read;
+        while ((read = in.read(buffer)) != -1) {
+            total += read;
+            if (total > maxResponseBytes) {
+                throw new TransportException(TransportErrorType.RESPONSE_TOO_LARGE,
+                        "HTTP 响应超过上限: " + request.getMethod() + " " + request.getUrl()
+                                + " max=" + maxResponseBytes);
+            }
+            out.write(buffer, 0, read);
+        }
+        return out.toByteArray();
+    }
+
+    /** 按异常特征归类为 TransportErrorType，供重试与告警决策。 */
+    private static TransportException mapError(IOException e, TransportRequest request) {
+        String message = "HTTP 调用失败: " + request.getMethod() + " " + request.getUrl()
+                + " (" + e.getClass().getSimpleName() + ": " + e.getMessage() + ")";
+        if (e instanceof java.net.ConnectException || e instanceof java.net.UnknownHostException
+                || e instanceof java.net.NoRouteToHostException) {
+            return new TransportException(TransportErrorType.CONNECT, message, e);
+        }
+        if (e instanceof java.net.SocketTimeoutException) {
+            return new TransportException(TransportErrorType.TIMEOUT, message, e);
+        }
+        return new TransportException(TransportErrorType.RETRYABLE_IO, message, e);
+    }
+}

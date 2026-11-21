@@ -30,10 +30,8 @@
         <module>scaffold-starter-redis</module>
         <module>scaffold-starter-job</module>
         <module>scaffold-starter-crypto</module>
-        <module>scaffold-starter-storage</module>
         <module>scaffold-starter-message</module>
         <module>scaffold-starter-powerjob</module>
-        <module>scaffold-starter-http</module>
         <module>scaffold-starter-push</module>
         <module>scaffold-starter-ws</module>
         <module>scaffold-starter-observability</module>

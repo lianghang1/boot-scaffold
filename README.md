@@ -9,6 +9,7 @@ boot-scaffold/
 ├── scaffold-parent           统一父 POM：版本 + 插件基线，外部项目继承它复用
 ├── scaffold-dependencies     BOM：全部依赖版本唯一出口
 ├── scaffold-common           公共工具（异常/JSON/日期/枚举等）
+├── scaffold-http             纯 Java HTTP 客户端库（okhttp 封装：超时/重试/traceId/签名；无 Spring 依赖）
 └── scaffold-starters/        能力积木，按需依赖，自动装配
     ├── starter-web           Web 基础：traceId / 全局异常 / 访问日志 / Jackson
     ├── starter-log           日志基线
@@ -24,8 +25,6 @@ boot-scaffold/
     ├── starter-job           AbstractJob 定时任务体系（执行日志 / 分布式锁）
     ├── starter-powerjob      PowerJob 执行器适配
     ├── starter-crypto        敏感字段加密（AES-256-GCM / SM4）
-    ├── starter-http          出站 HTTP（okhttp 封装：重试 / traceId 透传）
-    ├── starter-storage       文件存储（x-file-storage 封装）
     ├── starter-message       短信 + 邮件
     ├── starter-push          SSE 实时推送
     ├── starter-ws            WebSocket 双向通道
