@@ -290,7 +290,15 @@ public final class QueryUtilsX {
                 continue; // 非法运算符：跳过
             }
             Object raw = entry.getValue();
-            String value = raw == null ? "" : String.valueOf(raw).trim();
+            String value;
+            if (raw instanceof String[]) {
+                // 直接兼容 servlet 的 request.getParameterMap()：单值取首个元素。
+                // 多值语义由 X 通路的 "||" OR 分支与逗号 IN 表达，不依赖原生数组协议。
+                String[] arr = (String[]) raw;
+                value = arr.length > 0 && arr[0] != null ? arr[0].trim() : "";
+            } else {
+                value = raw == null ? "" : String.valueOf(raw).trim();
+            }
             if (value.isEmpty() && !op.isValueless()) {
                 continue; // 空值条件跳过
             }
