@@ -1,5 +1,7 @@
 package com.sfi.scaffold.starter.data.jpa.datascope;
 
+import com.sfi.scaffold.common.datascope.DataScopeType;
+
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

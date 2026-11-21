@@ -1,4 +1,7 @@
-package com.sfi.scaffold.starter.data.jpa.datascope;
+package com.sfi.scaffold.common.datascope;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -16,7 +19,8 @@ import java.util.Set;
  * </ul>
  *
  * <p>deptIds 与 self 为 OR 关系（各自命中即可见）；all 为 true 时二者被忽略。
- * 对象不可变，由 {@link DataScopeReducer} 产出。</p>
+ * 对象不可变，由 {@link DataScopeReducer} 产出。可 JSON 序列化/反序列化
+ * （随 LoginUser.attributes 会话透传，键见 {@code DataScopeKeys}）。</p>
  *
  * @author lianghang
  */
@@ -51,6 +55,17 @@ public final class DataScopeDecision {
 
     /** 组合部门集合与本人条件（OR）。 */
     public static DataScopeDecision of(Collection<Long> deptIds, boolean self) {
+        return new DataScopeDecision(false, deptIds, self);
+    }
+
+    /** JSON 反序列化入口（会话读回时还原）。 */
+    @JsonCreator
+    public static DataScopeDecision deserialize(@JsonProperty("all") boolean all,
+                                                @JsonProperty("deptIds") Collection<Long> deptIds,
+                                                @JsonProperty("self") boolean self) {
+        if (all) {
+            return all();
+        }
         return new DataScopeDecision(false, deptIds, self);
     }
 

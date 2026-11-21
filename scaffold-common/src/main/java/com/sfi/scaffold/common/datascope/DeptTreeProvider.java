@@ -1,4 +1,4 @@
-package com.sfi.scaffold.starter.data.jpa.datascope;
+package com.sfi.scaffold.common.datascope;
 
 import java.util.Collections;
 import java.util.Set;
@@ -8,8 +8,6 @@ import java.util.Set;
  *
  * <p>仅在归约 {@link DataScopeType#DEPT_AND_CHILD} 档时被调用。业务可用递归 CTE、
  * 物化路径（如 ancestor_ids）或缓存的闭包表实现，框架只消费结果集合。</p>
- *
- * <p>默认实现返回空集——未注册的档位不会放开数据（fail-closed 语义）。</p>
  *
  * @author lianghang
  */

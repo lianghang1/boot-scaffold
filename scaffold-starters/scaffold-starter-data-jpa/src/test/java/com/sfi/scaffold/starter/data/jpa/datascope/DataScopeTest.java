@@ -1,5 +1,6 @@
 package com.sfi.scaffold.starter.data.jpa.datascope;
 
+import com.sfi.scaffold.common.datascope.DataScopeType;
 import com.sfi.scaffold.starter.data.jpa.audit.ScaffoldAuditorHolder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

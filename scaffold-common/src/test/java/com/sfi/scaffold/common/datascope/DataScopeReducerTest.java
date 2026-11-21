@@ -1,4 +1,4 @@
-package com.sfi.scaffold.starter.data.jpa.datascope;
+package com.sfi.scaffold.common.datascope;
 
 import org.junit.jupiter.api.Test;
 

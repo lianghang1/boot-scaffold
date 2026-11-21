@@ -1,7 +1,6 @@
-package com.sfi.scaffold.starter.data.jpa.datascope;
+package com.sfi.scaffold.common.datascope;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -90,8 +89,6 @@ public final class DataScopeReducer {
         if (all) {
             return DataScopeDecision.all();
         }
-        // 无角色兜底已在上方处理；此处 deptIds 与 self 可能同时为空
-        // （如仅配 DEPT_ONLY 但无部门），保持空集不放全量即可。
         if (deptIds.isEmpty() && !self) {
             return DataScopeDecision.self();
         }

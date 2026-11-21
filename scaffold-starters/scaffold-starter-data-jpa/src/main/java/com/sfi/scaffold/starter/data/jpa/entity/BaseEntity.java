@@ -41,6 +41,10 @@ import java.time.LocalDateTime;
         @FilterDef(name = "scaffold_data_scope_self",
                 parameters = @ParamDef(name = "owner", type = "string"),
                 defaultCondition = "create_by = :owner"),
+        // 部门范围 FilterDef（数据权限动态决策）：不带 defaultCondition——
+        // 列名由各实体 @Filter condition 声明（默认 dept_id），自定义列的实体可覆盖
+        @FilterDef(name = "scaffold_data_scope_dept",
+                parameters = @ParamDef(name = "deptIds", type = "java.lang.Long")),
         // 多租户 FilterDef（scaffold-starter-tenant 在场时由切面启用）：
         // 不带 defaultCondition——列名由各实体 @Filter condition 声明（默认列 tenant_id），
         // 避免在此写死列名导致自定义列的实体无法覆盖

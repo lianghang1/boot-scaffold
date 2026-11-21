@@ -4,6 +4,7 @@ import cn.zhxu.bs.ParamFilter;
 import com.sfi.scaffold.starter.tenant.aspect.FindByIdTenantAspect;
 import com.sfi.scaffold.starter.tenant.aspect.JpaTenantFilterAspect;
 import com.sfi.scaffold.starter.tenant.aspect.TenantIgnoreAspect;
+import com.sfi.scaffold.starter.tenant.bs.DataScopeParamFilter;
 import com.sfi.scaffold.starter.tenant.bs.TenantParamFilter;
 import org.hibernate.Session;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -46,6 +47,13 @@ public class TenantAutoConfiguration {
         @ConditionalOnMissingBean(TenantParamFilter.class)
         public TenantParamFilter tenantParamFilter(TenantProperties properties) {
             return new TenantParamFilter(properties);
+        }
+
+        /** 数据权限检索过滤器：与 jpa 通路共用 DataScopeHolder 决策。 */
+        @Bean
+        @ConditionalOnMissingBean(DataScopeParamFilter.class)
+        public DataScopeParamFilter dataScopeParamFilter() {
+            return new DataScopeParamFilter();
         }
     }
 

@@ -1,8 +1,12 @@
 package com.sfi.scaffold.starter.security.identity;
 
 import com.alibaba.ttl.TransmittableThreadLocal;
+import com.sfi.scaffold.common.datascope.DataScopeDecision;
+import com.sfi.scaffold.common.datascope.DataScopeHolder;
+import com.sfi.scaffold.common.datascope.DataScopeKeys;
 import com.sfi.scaffold.common.exception.BizException;
 import com.sfi.scaffold.common.exception.GlobalErrorCode;
+import com.sfi.scaffold.common.util.JsonUtils;
 import org.springframework.util.ClassUtils;
 
 /**
@@ -48,11 +52,13 @@ public final class LoginContext {
     public static void set(LoginUser user) {
         HOLDER.set(user);
         syncAuditor(user);
+        syncDataScope(user);
     }
 
     public static void clear() {
         HOLDER.remove();
         clearAuditor();
+        DataScopeHolder.clear();
     }
 
     /** 同步审计人（data-jpa 在场时 createBy/updateBy 自动填充）；JPA 缺席时静默跳过 */
@@ -66,5 +72,16 @@ public final class LoginContext {
         if (AUDITOR_PRESENT) {
             com.sfi.scaffold.starter.data.jpa.audit.ScaffoldAuditorHolder.clear();
         }
+    }
+
+    /**
+     * 同步数据范围决策到 DataScopeHolder：从 attributes 的 JSON 串还原。
+     * 未写入该属性（未接入数据权限 / 平台身份）时清空持有器，保证全放行、不串号。
+     */
+    private static void syncDataScope(LoginUser user) {
+        String json = user.getAttributes() == null ? null : user.getAttributes().get(DataScopeKeys.ATTR_DECISION);
+        DataScopeDecision decision = (json == null || json.isEmpty())
+                ? null : JsonUtils.fromJson(json, DataScopeDecision.class);
+        DataScopeHolder.set(decision);
     }
 }
