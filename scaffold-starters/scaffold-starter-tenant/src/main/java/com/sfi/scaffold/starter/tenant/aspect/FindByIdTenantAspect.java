@@ -2,7 +2,6 @@ package com.sfi.scaffold.starter.tenant.aspect;
 
 import com.sfi.scaffold.starter.security.identity.LoginContext;
 import com.sfi.scaffold.starter.security.identity.LoginUser;
-import com.sfi.scaffold.starter.tenant.annotation.TenantIdField;
 import com.sfi.scaffold.starter.tenant.core.TenantIgnoreHolder;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -22,9 +21,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * 由本切面在结果上比对租户——不一致返回空 + WARN 审计（过滤式而非 403：
  * 防 403/空差异造成的主键存在性探测，语义与「查不到数据」统一）。
  *
- * <p>租户字段定位：字段名 {@code tenantId} 自动探测，或字段标注
- * {@link TenantIdField}；两者皆无视为非租户实体，原样放行。平台身份
- * （无 tenantId）与 {@code @TenantIgnore} 豁免期间不比对。</p>
+ * <p>租户字段定位：按固定字段名 {@code tenantId} 探测（全平台统一约定，
+ * jpa/query/findById 三条通路一致）；无该字段视为非租户实体，原样放行。
+ * 平台身份（无 tenantId）与 {@code @TenantIgnore} 豁免期间不比对。</p>
  *
  * @author lianghang
  */
@@ -67,7 +66,7 @@ public class FindByIdTenantAspect {
         return result;
     }
 
-    /** 租户字段解析（按实体类缓存）：字段名 tenantId 优先，其次 @TenantIdField 标注 */
+    /** 租户字段解析（按实体类缓存）：按固定字段名 tenantId 探测。 */
     static Field resolveTenantField(Class<?> entityClass) {
         return FIELD_CACHE.computeIfAbsent(entityClass, FindByIdTenantAspect::scan);
     }
@@ -75,7 +74,7 @@ public class FindByIdTenantAspect {
     private static Field scan(Class<?> type) {
         for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
             for (Field f : c.getDeclaredFields()) {
-                if ("tenantId".equals(f.getName()) || f.isAnnotationPresent(TenantIdField.class)) {
+                if ("tenantId".equals(f.getName())) {
                     f.setAccessible(true);
                     return f;
                 }

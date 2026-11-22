@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -18,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * JPA 通路集成测试（H2）：@TenantFilter 组合注解（Hibernate meta-annotation）生效、
  * findAll 按租户过滤、findById 不一致返回空、@TenantIgnore 豁免、平台视角放行、
- * TenantScope 模拟租户、自定列/字段形态。
+ * TenantScope 模拟租户。
  *
  * @author lianghang
  */
@@ -33,9 +32,6 @@ class JpaTenantAspectTest {
     PlainRecordRepository plainRecordRepository;
 
     @Autowired
-    CustomFieldRecordRepository customFieldRepository;
-
-    @Autowired
     TenantDemoService demoService;
 
     @BeforeEach
@@ -43,7 +39,6 @@ class JpaTenantAspectTest {
         // Spring 上下文跨测试类缓存，先清库保证各用例计数从零开始
         tenantRecordRepository.deleteAll();
         plainRecordRepository.deleteAll();
-        customFieldRepository.deleteAll();
     }
 
     @AfterEach
@@ -117,19 +112,6 @@ class JpaTenantAspectTest {
         List<TenantRecord> switched = TenantScope.execute("t2", () -> tenantRecordRepository.findAll());
         assertThat(switched).hasSize(1);
         assertThat(LoginContext.current().getTenantId()).isEqualTo("t1");
-    }
-
-    @Test
-    void customTenantFieldShouldBeResolvedViaTenantIdFieldAnnotation() {
-        List<CustomFieldRecord> seeded = customFieldRepository.saveAll(Arrays.asList(
-                new CustomFieldRecord("t1", "a"), new CustomFieldRecord("t2", "b")));
-        customFieldRepository.flush();
-        login("t1");
-        // @TenantIdField 标注的字段参与 findById 比对
-        assertThat(customFieldRepository.findById(seeded.get(0).getId())).isPresent();
-        assertThat(customFieldRepository.findById(seeded.get(1).getId())).isEmpty();
-        // @Filter condition 引用自定列（org_tenant），findAll 同样过滤
-        assertThat(customFieldRepository.findAll()).hasSize(1);
     }
 
     private List<TenantRecord> seed(String... tenants) {

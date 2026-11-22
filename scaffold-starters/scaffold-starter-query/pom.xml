@@ -29,6 +29,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-autoconfigure</artifactId>
         </dependency>
+        <!-- @IncludeDeleted 豁免切面 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
         <!-- Pageable / Page（仅用 spring-data-commons 接口，不引入 JPA） -->
         <dependency>
             <groupId>org.springframework.data</groupId>

@@ -14,7 +14,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * {@link BaseService} 骨架行为：逻辑删除过滤、逻辑删除而非物理删除、NOT_FOUND 语义。
+ * {@link BaseService} 骨架行为：get 查不到返回 null、逻辑删除过滤、
+ * delete 走逻辑删除且不存在抛 NOT_FOUND、require 供写操作兜底。
  *
  * @author lianghang
  */
@@ -32,6 +33,7 @@ class BaseServiceTest {
 
     static class ItemService extends BaseService<Item> {
         ItemService(JpaRepository<Item, Long> repo) { super(repo); }
+        Item requirePublic(Long id) { return require(id); }
     }
 
     @BeforeEach
@@ -53,28 +55,35 @@ class BaseServiceTest {
     }
 
     @Test
-    void getFiltersLogicalDeleted() {
+    void getFiltersLogicalDeletedReturningNull() {
         when(repo.findById(1L)).thenReturn(Optional.of(item(1L, true)));
-        BizException ex = assertThrows(BizException.class, () -> service.get(1L));
+        assertNull(service.get(1L), "逻辑删除记录 get 应返回 null，不抛异常");
+        assertFalse(service.exists(1L));
+    }
+
+    @Test
+    void getReturnsNullWhenMissing() {
+        when(repo.findById(9L)).thenReturn(Optional.empty());
+        assertNull(service.get(9L));
+        assertFalse(service.exists(9L));
+    }
+
+    @Test
+    void getReturnsNullForNullId() {
+        assertNull(service.get(null));
+    }
+
+    @Test
+    void requireThrowsNotFoundForWritePaths() {
+        when(repo.findById(9L)).thenReturn(Optional.empty());
+        BizException ex = assertThrows(BizException.class, () -> service.requirePublic(9L));
         assertEquals(GlobalErrorCode.NOT_FOUND.getCode(), ex.getErrorCode().getCode());
     }
 
     @Test
-    void getThrowsNotFoundWhenMissing() {
-        when(repo.findById(9L)).thenReturn(Optional.empty());
-        assertThrows(BizException.class, () -> service.get(9L));
-    }
-
-    @Test
-    void getRejectsNullId() {
-        assertThrows(BizException.class, () -> service.get(null));
-    }
-
-    @Test
-    void findReturnsNullInsteadOfThrowing() {
-        when(repo.findById(9L)).thenReturn(Optional.empty());
-        assertNull(service.find(9L));
-        assertFalse(service.exists(9L));
+    void requireReturnsAlive() {
+        when(repo.findById(1L)).thenReturn(Optional.of(item(1L, false)));
+        assertEquals(1L, service.requirePublic(1L).getId());
     }
 
     @Test
@@ -86,5 +95,12 @@ class BaseServiceTest {
         verify(repo).save(alive);
         verify(repo, never()).delete(any(Item.class));
         verify(repo, never()).deleteById(anyLong());
+    }
+
+    @Test
+    void deleteMissingThrowsNotFound() {
+        when(repo.findById(9L)).thenReturn(Optional.empty());
+        assertThrows(BizException.class, () -> service.delete(9L));
+        verify(repo, never()).save(any(Item.class));
     }
 }

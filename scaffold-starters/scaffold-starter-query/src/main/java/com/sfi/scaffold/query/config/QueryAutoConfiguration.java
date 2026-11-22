@@ -6,6 +6,7 @@ import cn.zhxu.bs.boot.BeanSearcherAutoConfiguration;
 import cn.zhxu.bs.implement.BaseSearcher;
 import com.sfi.scaffold.query.QueryUtilsX;
 import com.sfi.scaffold.query.QueryInterceptor;
+import com.sfi.scaffold.query.aspect.IncludeDeletedAspect;
 import com.sfi.scaffold.query.plan.ScaffoldMetaResolver;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -19,6 +20,7 @@ import org.springframework.context.annotation.Bean;
  * <ol>
  *   <li>把 {@link ScaffoldMetaResolver} 挂到 BeanSearcher / MapSearcher（支持 QueryPlanX 注解合成）</li>
  *   <li>初始化 {@link QueryUtilsX} 静态门面</li>
+ *   <li>装配逻辑删除过滤器 {@link DeletedParamFilter} 与豁免切面 {@link IncludeDeletedAspect}</li>
  * </ol>
  *
  * <p>Bean Searcher starter 默认使用 SpringSqlExecutor，检索自动参与 Spring 事务。
@@ -43,7 +45,7 @@ public class QueryAutoConfiguration {
                                                        QueryProperties properties,
                                                        org.springframework.core.env.Environment environment,
                                                        org.springframework.beans.factory.ObjectProvider<QueryInterceptor> interceptors,
-                                                       org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate namedJdbc) {
+                                                       org.springframework.beans.factory.ObjectProvider<org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate> namedJdbc) {
         return new QueryUtilsInitializer(beanSearcher, mapSearcher, properties, environment, interceptors, namedJdbc);
     }
 
@@ -55,6 +57,23 @@ public class QueryAutoConfiguration {
     @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
     public FixedFilterParamFilter fixedFilterParamFilter() {
         return new FixedFilterParamFilter();
+    }
+
+    /**
+     * 逻辑删除过滤器：检索类含 deleted 字段即注入 deleted=false，前端不可篡改；
+     * '@IncludeDeleted' 豁免期放行。bean-searcher-boot-starter 自动收集为 ParamFilter Bean。
+     */
+    @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
+    public DeletedParamFilter deletedParamFilter() {
+        return new DeletedParamFilter();
+    }
+
+    /** 逻辑删除豁免切面：'@IncludeDeleted' 方法/类标记期间放行 deleted 过滤。 */
+    @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
+    public IncludeDeletedAspect includeDeletedAspect() {
+        return new IncludeDeletedAspect();
     }
 
     /**
@@ -100,15 +119,18 @@ public class QueryAutoConfiguration {
                               QueryProperties properties,
                               org.springframework.core.env.Environment environment,
                               org.springframework.beans.factory.ObjectProvider<QueryInterceptor> interceptors,
-                              org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate namedJdbc) {
+                              org.springframework.beans.factory.ObjectProvider<org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate> namedJdbc) {
             // 收集 db-type 声明：doNativeQuery 分页与 @TableX.useIndex 校验按数据源解析
             DatabaseTypes.configure(environment);
             QueryUtilsX.configure(beanSearcher, mapSearcher);
             QueryUtilsX.configure(properties);
             QueryUtilsX.configureInterceptors(interceptors.orderedStream()
                     .collect(java.util.stream.Collectors.toList()));
-            if (namedJdbc != null) {
-                QueryUtilsX.configureNative(namedJdbc);
+            // 原生 SQL 查询依赖 spring-jdbc；无 spring-jdbc 的环境（如仅 security 的测试上下文）
+            // 静默跳过，doNativeQuery 在调用时自行给出明确错误
+            org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate jdbc = namedJdbc.getIfAvailable();
+            if (jdbc != null) {
+                QueryUtilsX.configureNative(jdbc);
             }
         }
     }

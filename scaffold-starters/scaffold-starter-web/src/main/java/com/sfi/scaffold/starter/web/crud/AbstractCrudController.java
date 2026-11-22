@@ -27,7 +27,7 @@ import javax.validation.Valid;
  *   <li>list 走 {@link QuerySupport}：无 plan 查默认实体、有 plan 匹配白名单计划，
  *       统一 1 基分页，返回 {@link PageResult}；</li>
  *   <li>save 用 Jackson 把 {@code @RequestBody D} 转成 {@code E} 后调
- *       {@link BaseService#saveEntity(BaseEntity)}——泛型实参由 Spring 的
+ *       {@link BaseService#save(BaseEntity)}——泛型实参由 Spring 的
  *       {@code ResolvableType} 从子类声明解析，{@code @Valid} 照常生效；</li>
  *   <li>delete 走 {@link BaseService#delete(Long)} 逻辑删除。</li>
  * </ol>
@@ -59,7 +59,7 @@ public abstract class AbstractCrudController<E extends BaseEntity, D, S extends 
         return R.ok(querySupport.query(this, request.getParameterMap(), entityClass()));
     }
 
-    /** 详情：按 id 查询（逻辑删除过滤 + NOT_FOUND 由 BaseService 保证）。 */
+    /** 详情：按 id 查询（逻辑删除过滤由 BaseService 保证，查不到返回 null）。 */
     @GetMapping("/get")
     public R<E> get(@RequestParam Long id) {
         return R.ok(service.get(id));
@@ -68,7 +68,7 @@ public abstract class AbstractCrudController<E extends BaseEntity, D, S extends 
     /** 新增/修改：DTO → 实体 → 通用 save；加密/唯一键等业务差异在 Service 子类覆盖。 */
     @PostMapping
     public R<E> save(@Valid @RequestBody D dto) {
-        return R.ok(service.saveEntity(toEntity(dto)));
+        return R.ok(service.save(toEntity(dto)));
     }
 
     /** 删除：逻辑删除。 */

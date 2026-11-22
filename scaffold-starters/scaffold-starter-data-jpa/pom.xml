@@ -20,6 +20,11 @@
             <groupId>com.sfi.scaffold</groupId>
             <artifactId>scaffold-common</artifactId>
         </dependency>
+        <!-- BaseService.list/page/count 走 QueryUtilsX；query 不依赖 data-jpa，单向无环 -->
+        <dependency>
+            <groupId>com.sfi.scaffold</groupId>
+            <artifactId>scaffold-starter-query</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>transmittable-thread-local</artifactId>
