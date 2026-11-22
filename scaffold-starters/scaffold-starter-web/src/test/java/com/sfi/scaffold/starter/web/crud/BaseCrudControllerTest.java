@@ -23,8 +23,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * {@link BaseCrudController} 端点与三处钩子：get/save/delete 委托 Service；
- * filtersOf 改写条件、beforeDelete 在删除前触发、toEntity 装配字段。
+ * {@link BaseCrudController} 端点与四处钩子：get/save/delete 委托 Service；
+ * filtersOf 改写条件、rewriteList 改写结果、beforeDelete 在删除前触发、toEntity 装配字段。
  *
  * @author lianghang
  */
@@ -54,6 +54,7 @@ class BaseCrudControllerTest {
     static class ItemController extends BaseCrudController<Item, ItemDto, ItemService> {
         boolean beforeDeleteCalled;
         List<QueryFilterX> capturedFilters;
+        boolean rewriteEnabled;
 
         ItemController(ItemService service) { super(service, Item.class); }
 
@@ -64,6 +65,21 @@ class BaseCrudControllerTest {
         protected List<QueryFilterX> filtersOf(javax.servlet.http.HttpServletRequest request) {
             capturedFilters = new ArrayList<>(super.filtersOf(request));
             return capturedFilters;
+        }
+
+        @Override
+        protected PageResult<?> rewriteList(PageResult<?> result) {
+            if (!rewriteEnabled) {
+                return super.rewriteList(result);
+            }
+            // 整体改写：改 total + 把每条 name 加工后放回一个新的 PageResult
+            List<Object> rewritten = new ArrayList<>();
+            for (Object item : result.getList()) {
+                Item i = (Item) item;
+                i.setItemName("改写-" + i.getItemName());
+                rewritten.add(i);
+            }
+            return PageResult.of(rewritten, 999, result.getPageNum(), result.getPageSize());
         }
     }
 
@@ -127,5 +143,40 @@ class BaseCrudControllerTest {
                 .andExpect(status().isOk());
         assertThat(controller.capturedFilters).isNotNull();
         verify(service).page(anyList(), any());
+    }
+
+    @Test
+    void listNotRewrittenByDefault() throws Exception {
+        ItemService service = spy(new ItemService());
+        Item item = new Item();
+        item.setId(1L);
+        item.setItemName("原始");
+        doReturn(PageResult.of(java.util.Collections.singletonList(item), 1, 1, 10))
+                .when(service).page(anyList(), any());
+        ItemController controller = new ItemController(service); // rewriteEnabled 默认 false
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller).build();
+
+        mvc.perform(get("/list"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.list[0].itemName").value("原始"));
+    }
+
+    @Test
+    void listRewritesResultWhenOverridden() throws Exception {
+        ItemService service = spy(new ItemService());
+        Item item = new Item();
+        item.setId(1L);
+        item.setItemName("原始");
+        doReturn(PageResult.of(java.util.Collections.singletonList(item), 1, 1, 10))
+                .when(service).page(anyList(), any());
+        ItemController controller = new ItemController(service);
+        controller.rewriteEnabled = true;
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller).build();
+
+        mvc.perform(get("/list"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(999))
+                .andExpect(jsonPath("$.data.list[0].itemName").value("改写-原始"));
     }
 }

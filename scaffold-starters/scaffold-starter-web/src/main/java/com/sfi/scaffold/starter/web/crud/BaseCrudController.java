@@ -36,9 +36,10 @@ import java.util.List;
  * plan 白名单以外的判断——这些都不进基类。写操作带业务规则（加密/兜底/复杂装配）
  * 的资源不接本基类，直接手写 Controller。</p>
  *
- * <p><b>三处可覆盖点</b>（默认实现即通用行为）：</p>
+ * <p><b>四处可覆盖点</b>（默认实现即通用行为）：</p>
  * <ol>
  *   <li>{@link #filtersOf(HttpServletRequest)}：请求参数 → QueryFilterX 集合，子类可增删改条件；</li>
+ *   <li>{@link #rewriteList(PageResult)}：列表结果整体改写（脱敏、字段加工、转 VO、改 total/过滤），默认原样；</li>
  *   <li>{@link #toEntity(Object)}：DTO → 实体，子类可改字段装配；</li>
  *   <li>{@link #beforeDelete(Long)}：删除前钩子，子类可做校验/联动。</li>
  * </ol>
@@ -77,17 +78,20 @@ public abstract class BaseCrudController<E extends BaseEntity, D, S extends Base
     private PageResult<?> doList(String plan, HttpServletRequest request) {
         List<QueryFilterX> filters = filtersOf(request);
         PageParam page = pageParamOf(request);
+        PageResult<?> result;
         if (plan == null || plan.isEmpty()) {
-            return service.page(filters, page);
+            result = service.page(filters, page);
+        } else {
+            Class<?> target = QueryUtilsX.resolvePlan(ClassUtils.getUserClass(getClass()), plan);
+            Pageable pageable = page.isUnpaged()
+                    ? Pageable.unpaged()
+                    : PageRequest.of(page.getPageNum() - 1, page.getPageSize());
+            Page<?> paged = QueryUtilsX.doQuery(filters, pageable, target);
+            long total = paged.getTotalElements();
+            long size = pageable.isPaged() ? page.getPageSize() : (total == 0 ? 0 : total);
+            result = PageResult.of(paged.getContent(), total, page.getPageNum(), size);
         }
-        Class<?> target = QueryUtilsX.resolvePlan(ClassUtils.getUserClass(getClass()), plan);
-        Pageable pageable = page.isUnpaged()
-                ? Pageable.unpaged()
-                : PageRequest.of(page.getPageNum() - 1, page.getPageSize());
-        Page<?> result = QueryUtilsX.doQuery(filters, pageable, target);
-        long total = result.getTotalElements();
-        long size = pageable.isPaged() ? page.getPageSize() : (total == 0 ? 0 : total);
-        return PageResult.of(result.getContent(), total, page.getPageNum(), size);
+        return rewriteList(result);
     }
 
     /** 详情：逻辑删除过滤由 BaseService 保证，查不到返回 null。 */
@@ -110,11 +114,21 @@ public abstract class BaseCrudController<E extends BaseEntity, D, S extends Base
         return R.ok();
     }
 
-    // ==================== 三处可覆盖点 ====================
+    // ==================== 四处可覆盖点 ====================
 
     /** 请求参数 → 查询条件；子类可在 super 结果上增删改（如注入固定条件、改写字段值）。 */
     protected List<QueryFilterX> filtersOf(HttpServletRequest request) {
         return QueryUtilsX.parse(request.getParameterMap());
+    }
+
+    /**
+     * 列表结果整体改写：脱敏、字段加工、实体转 VO、改 total、过滤某些行等；默认原样返回。
+     *
+     * <p>入参是已经分页好的 {@link PageResult}（无 plan 走 Service、带 plan 走 query 通路），
+     * 子类可直接改其 list/total 后返回，也可 {@code PageResult.of(...)} 构造一个全新结果。</p>
+     */
+    protected PageResult<?> rewriteList(PageResult<?> result) {
+        return result;
     }
 
     /** DTO → 实体；子类可覆盖做字段级装配。 */
