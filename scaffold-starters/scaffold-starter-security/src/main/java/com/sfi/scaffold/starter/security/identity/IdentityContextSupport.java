@@ -12,7 +12,7 @@ import java.util.Set;
 /**
  * 认证组件共用的身份装配工具：登录用户写入 LoginContext 与 SecurityContext
  * 双轨、请求结束时强制清理、token 提取。各认证组件
- * 认证成功后统一经本类归一化，授权层（PermissionInterceptor）只认 LoginContext。
+ * 认证成功后统一经本类归一化，授权层（URL 权限拦截器）只认 LoginContext。
  *
  * @author lianghang
  */

@@ -5,7 +5,8 @@ import com.sfi.scaffold.common.result.R;
 import com.sfi.scaffold.common.util.ServletUtils;
 import com.sfi.scaffold.starter.security.anonymous.AnonymousScanner;
 import com.sfi.scaffold.starter.security.permission.PermissionChecker;
-import com.sfi.scaffold.starter.security.permission.PermissionInterceptor;
+import com.sfi.scaffold.starter.security.permission.UrlPermissionInterceptor;
+import com.sfi.scaffold.starter.security.permission.UrlPermissionProvider;
 import com.sfi.scaffold.starter.security.security.ScaffoldSecurityCustomizer;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -95,24 +96,32 @@ public class ScaffoldSecurityAutoConfiguration {
         return new com.sfi.scaffold.starter.security.apiencrypt.ApiEncryptResponseBodyAdvice(objectMapper);
     }
 
-    /** 权限校验拦截器：认证之后对 {@code @RequirePermission} 接口做 any-of 校验。 */
+    /** 权限裁决器（编程式 has/require 与 URL 拦截器共用）。 */
     @Bean
     public PermissionChecker permissionChecker() {
         return new PermissionChecker();
     }
 
+    /**
+     * URL 权限拦截器：认证之后按 URL + 方法匹配业务提供的规则做 any-of 校验。
+     *
+     * <p>{@link UrlPermissionProvider} 缺席时传 null，拦截器退化为「只认证不授权」，
+     * 保证无菜单体系的项目仍可用。业务实现该 Bean 即接管 URL→权限映射。</p>
+     */
     @Bean
-    @ConditionalOnMissingBean(PermissionInterceptor.class)
-    public PermissionInterceptor permissionInterceptor(PermissionChecker permissionChecker) {
-        return new PermissionInterceptor(permissionChecker);
+    @ConditionalOnMissingBean(UrlPermissionInterceptor.class)
+    public UrlPermissionInterceptor urlPermissionInterceptor(
+            PermissionChecker permissionChecker,
+            ObjectProvider<UrlPermissionProvider> urlPermissionProvider) {
+        return new UrlPermissionInterceptor(urlPermissionProvider.getIfAvailable(), permissionChecker);
     }
 
     @Bean
-    public WebMvcConfigurer permissionInterceptorConfigurer(PermissionInterceptor permissionInterceptor) {
+    public WebMvcConfigurer urlPermissionInterceptorConfigurer(UrlPermissionInterceptor interceptor) {
         return new WebMvcConfigurer() {
             @Override
             public void addInterceptors(InterceptorRegistry registry) {
-                registry.addInterceptor(permissionInterceptor).addPathPatterns("/**");
+                registry.addInterceptor(interceptor).addPathPatterns("/**");
             }
         };
     }

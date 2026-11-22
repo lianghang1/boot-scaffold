@@ -9,10 +9,11 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 /**
- * 编程式权限裁决：与 {@link RequirePermission} 注解同一套语义（任一命中即通过，OR）。
+ * 编程式权限裁决：any-of 语义（具备任一权限即通过）。
  *
  * <p>供业务代码使用——按钮显隐、菜单裁剪、service 内条件分支等需要「问一句有没有权」的场景。
- * 注解路径（{@link PermissionInterceptor}）与本类共用裁决与异常文案，保证两种用法行为一致。</p>
+ * 与 URL 权限拦截器 {@link UrlPermissionInterceptor} 共用本类做裁决与异常文案，
+ * 保证编程式与 URL 拦截两种用法行为一致。</p>
  *
  * @author lianghang
  */
