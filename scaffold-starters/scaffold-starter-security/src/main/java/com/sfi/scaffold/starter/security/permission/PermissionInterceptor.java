@@ -1,5 +1,7 @@
 package com.sfi.scaffold.starter.security.permission;
 
+import com.sfi.scaffold.common.annotation.CrudResource;
+import com.sfi.scaffold.common.annotation.CrudResourceMeta;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -30,14 +32,29 @@ public class PermissionInterceptor implements HandlerInterceptor {
             return true;
         }
         HandlerMethod handlerMethod = (HandlerMethod) handler;
+
+        // ① 显式注解优先：方法级 > 类级 @RequirePermission
         RequirePermission required = handlerMethod.getMethodAnnotation(RequirePermission.class);
         if (required == null) {
             required = handlerMethod.getBeanType().getAnnotation(RequirePermission.class);
         }
-        if (required == null) {
+        if (required != null) {
+            permissionChecker.require(required.value());
             return true;
         }
-        permissionChecker.require(required.value());
+
+        // ② 通用 CRUD 资源：从类级 @CrudResource 按方法名归约动作取权限点。
+        //    基类模板方法不写死权限，这里统一裁决，controller 子类得以零方法。
+        CrudResource crud = handlerMethod.getBeanType().getAnnotation(CrudResource.class);
+        if (crud == null) {
+            return true;
+        }
+        CrudResourceMeta.Action action =
+                CrudResourceMeta.actionOf(handlerMethod.getMethod().getName());
+        String[] perms = CrudResourceMeta.permissionsOf(crud, action);
+        if (CrudResourceMeta.hasPermission(perms)) {
+            permissionChecker.require(perms);
+        }
         return true;
     }
 }

@@ -37,6 +37,15 @@
             <groupId>com.sfi.scaffold</groupId>
             <artifactId>scaffold-starter-ip</artifactId>
         </dependency>
+        <!-- 通用 CRUD 控制层基类：list 走 QuerySupport，save/delete 走 BaseService -->
+        <dependency>
+            <groupId>com.sfi.scaffold</groupId>
+            <artifactId>scaffold-starter-query</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.sfi.scaffold</groupId>
+            <artifactId>scaffold-starter-data-jpa</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-autoconfigure</artifactId>
