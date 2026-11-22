@@ -1,6 +1,5 @@
 package com.sfi.scaffold.starter.protection.abuse;
 
-import com.sfi.scaffold.common.metrics.CounterMetrics;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.time.Duration;
@@ -20,28 +19,17 @@ import java.time.format.DateTimeFormatter;
  * <p>【规约】防刷在业务动作「执行前」调用（先判后做）；失败动作（如登录失败）
  * 用 {@link #hit} 累计、成功用 {@link #reset} 清零，语义与登录锁定一致。</p>
  *
- * <p>可观测性：每次拦截上报 {@code scaffold.protection.abuse.rejected} 计数
- * （scene/rule 标签），registry 缺席（lite/无 observability）时静默。</p>
- *
  * @author lianghang
  */
 public class AbuseGuard {
 
     private static final String KEY_PREFIX = com.sfi.scaffold.common.constant.RedisKeys.ABUSE;
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("yyyyMMdd");
-    private static final String REJECT_METRIC = com.sfi.scaffold.common.constant.MetricsNames.ABUSE_REJECTED;
 
     private final StringRedisTemplate redisTemplate;
-    /** 指标门面（条件装配绑定 micrometer 或 noop，隔离类加载） */
-    private final CounterMetrics counterMetrics;
 
     public AbuseGuard(StringRedisTemplate redisTemplate) {
-        this(redisTemplate, CounterMetrics.NOOP);
-    }
-
-    public AbuseGuard(StringRedisTemplate redisTemplate, CounterMetrics counterMetrics) {
         this.redisTemplate = redisTemplate;
-        this.counterMetrics = counterMetrics;
     }
 
     /**
@@ -57,7 +45,6 @@ public class AbuseGuard {
         String key = key(scene, "interval", identity);
         Boolean first = redisTemplate.opsForValue().setIfAbsent(key, "1", Duration.ofSeconds(intervalSeconds));
         if (first == null || !first) {
-            recordReject(scene, "interval");
             throw new AbuseException(scene, identity, "操作过于频繁，请 " + intervalSeconds + " 秒后再试");
         }
     }
@@ -75,7 +62,6 @@ public class AbuseGuard {
     public void checkWindow(String scene, String identity, int limit, Duration window) {
         long current = count(key(scene, "window", identity), window);
         if (current > limit) {
-            recordReject(scene, "window");
             throw new AbuseException(scene, identity, "操作过于频繁，请稍后再试");
         }
     }
@@ -94,7 +80,6 @@ public class AbuseGuard {
         // TTL 到次日零点 + 余量，跨天后自然失效重建
         long current = count(key, Duration.ofSeconds(secondsUntilMidnight() + 60));
         if (current > dailyLimit) {
-            recordReject(scene, "daily");
             throw new AbuseException(scene, identity, "今日操作次数已达上限，请明日再试");
         }
     }
@@ -129,11 +114,6 @@ public class AbuseGuard {
             redisTemplate.expire(key, ttl);
         }
         return count == null ? 0 : count;
-    }
-
-    /** 拦截指标上报（micrometer 在场时打点，否则 noop 静默） */
-    private void recordReject(String scene, String rule) {
-        counterMetrics.increment(REJECT_METRIC, "scene", scene, "rule", rule);
     }
 
     private String key(String scene, String type, String identity) {

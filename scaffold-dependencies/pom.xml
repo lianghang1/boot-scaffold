@@ -160,12 +160,6 @@
                 <artifactId>scaffold-starter-test</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <dependency>
-                <groupId>com.sfi.scaffold</groupId>
-                <artifactId>scaffold-starter-observability</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
             <!-- Spring Boot 官方 BOM -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>

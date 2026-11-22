@@ -72,6 +72,7 @@ class UrlPermissionInterceptorTest {
         @Anonymous
         @GetMapping("/api/open/ping") public String open() { return "ok"; }
         @GetMapping("/api/unmapped") public String unmapped() { return "ok"; }
+        @GetMapping("/api/public/health") public String publicHealth() { return "ok"; }
     }
 
     @Test
@@ -128,5 +129,59 @@ class UrlPermissionInterceptorTest {
                 .addInterceptors(noop).build();
         login();
         m.perform(get("/api/order/list")).andExpect(status().isOk());
+    }
+
+    // ===== 严格模式：未命中规则拒绝，白名单/匿名仍放行 =====
+
+    private MockMvc strictMvc() {
+        UrlPermissionProvider provider = () -> Arrays.asList(
+                new UrlPermissionRule("GET", "/api/order/**", "order:list"));
+        UrlPermissionInterceptor strict = new UrlPermissionInterceptor(
+                provider, new PermissionChecker(), true, Arrays.asList("/api/public/**"));
+        return MockMvcBuilders.standaloneSetup(new DemoController())
+                .addInterceptors(strict).build();
+    }
+
+    @Test
+    void strictModeRejectsUnmappedUrl() {
+        MockMvc m = strictMvc();
+        login("order:list");
+        NestedServletException ex = catchThrowableOfType(
+                () -> m.perform(get("/api/unmapped")), NestedServletException.class);
+        assertThat(ex.getRootCause()).isInstanceOf(BizException.class);
+        assertThat(((BizException) ex.getRootCause()).getErrorCode().getCode()).isEqualTo(1003);
+    }
+
+    @Test
+    void strictModeMatchedUrlStillAuthorized() throws Exception {
+        MockMvc m = strictMvc();
+        login("order:list");
+        m.perform(get("/api/order/list")).andExpect(status().isOk());
+    }
+
+    @Test
+    void strictModePermitUrlShortCircuits() throws Exception {
+        MockMvc m = strictMvc();
+        login(); // 无任何权限
+        m.perform(get("/api/public/health")).andExpect(status().isOk());
+    }
+
+    @Test
+    void strictModeAnonymousShortCircuits() throws Exception {
+        MockMvc m = strictMvc();
+        // 未登录、未命中规则，@Anonymous 仍放行
+        m.perform(get("/api/open/ping")).andExpect(status().isOk());
+    }
+
+    @Test
+    void strictModeNoProviderRejectsUnmapped() {
+        UrlPermissionInterceptor strict = new UrlPermissionInterceptor(
+                null, new PermissionChecker(), true, null);
+        MockMvc m = MockMvcBuilders.standaloneSetup(new DemoController())
+                .addInterceptors(strict).build();
+        login();
+        NestedServletException ex = catchThrowableOfType(
+                () -> m.perform(get("/api/order/list")), NestedServletException.class);
+        assertThat(ex.getRootCause()).isInstanceOf(BizException.class);
     }
 }

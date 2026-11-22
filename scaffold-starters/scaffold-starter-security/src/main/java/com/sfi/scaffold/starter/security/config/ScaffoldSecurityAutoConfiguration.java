@@ -105,15 +105,20 @@ public class ScaffoldSecurityAutoConfiguration {
     /**
      * URL 权限拦截器：认证之后按 URL + 方法匹配业务提供的规则做 any-of 校验。
      *
-     * <p>{@link UrlPermissionProvider} 缺席时传 null，拦截器退化为「只认证不授权」，
+     * <p>{@link UrlPermissionProvider} 缺席时传 null，非严格模式下退化为「只认证不授权」，
      * 保证无菜单体系的项目仍可用。业务实现该 Bean 即接管 URL→权限映射。</p>
+     *
+     * <p>{@code scaffold.security.url-permission-strict=true} 时，未命中任何规则的 URL
+     * 直接 403；{@code permit-urls} 与 {@code @Anonymous} 始终短路放行。</p>
      */
     @Bean
     @ConditionalOnMissingBean(UrlPermissionInterceptor.class)
     public UrlPermissionInterceptor urlPermissionInterceptor(
             PermissionChecker permissionChecker,
+            SecurityProperties properties,
             ObjectProvider<UrlPermissionProvider> urlPermissionProvider) {
-        return new UrlPermissionInterceptor(urlPermissionProvider.getIfAvailable(), permissionChecker);
+        return new UrlPermissionInterceptor(urlPermissionProvider.getIfAvailable(), permissionChecker,
+                properties.isUrlPermissionStrict(), properties.getPermitUrls());
     }
 
     @Bean
@@ -124,28 +129,5 @@ public class ScaffoldSecurityAutoConfiguration {
                 registry.addInterceptor(interceptor).addPathPatterns("/**");
             }
         };
-    }
-
-    /** micrometer 在场时绑定真实打点；嵌套类经 ASM 元数据判定条件，类加载安全 */
-    @Configuration(proxyBeanMethods = false)
-    @org.springframework.boot.autoconfigure.condition.ConditionalOnClass(name = "io.micrometer.core.instrument.MeterRegistry")
-    static class MicrometerCounterMetricsConfiguration {
-
-        @org.springframework.context.annotation.Bean
-        com.sfi.scaffold.common.metrics.CounterMetrics micrometerCounterMetrics(
-                org.springframework.beans.factory.ObjectProvider<io.micrometer.core.instrument.MeterRegistry> registry) {
-            return new com.sfi.scaffold.common.metrics.MicrometerCounterMetrics(registry.getIfAvailable());
-        }
-    }
-
-    /** 兜底空实现：micrometer 不在场时静默 */
-    @Configuration(proxyBeanMethods = false)
-    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(com.sfi.scaffold.common.metrics.CounterMetrics.class)
-    static class DefaultCounterMetricsConfiguration {
-
-        @org.springframework.context.annotation.Bean
-        com.sfi.scaffold.common.metrics.CounterMetrics noopCounterMetrics() {
-            return com.sfi.scaffold.common.metrics.CounterMetrics.NOOP;
-        }
     }
 }

@@ -2,7 +2,6 @@ package com.sfi.scaffold.starter.security.policy;
 
 import com.sfi.scaffold.starter.security.config.SecurityProperties;
 import com.sfi.scaffold.starter.security.token.config.TokenProperties;
-import com.sfi.scaffold.common.metrics.CounterMetrics;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.time.Duration;
@@ -16,42 +15,28 @@ import java.time.Duration;
  * （防单 IP 遍历撞库），窗口到期自动解除。IP 计数只在 {@code ipGuard.enabled}
  * 时生效。</p>
  *
- * <p>可观测性：每次失败上报 {@code scaffold.security.login.failures} 计数
- * （dimension=account/ip），registry 缺席时静默。</p>
- *
  * @author lianghang
  */
 public class LoginFailureGuard {
 
     private static final String KEY_PREFIX = com.sfi.scaffold.common.constant.RedisKeys.SECURITY_LOGIN_FAIL;
     private static final String IP_KEY_PREFIX = com.sfi.scaffold.common.constant.RedisKeys.SECURITY_LOGIN_IP;
-    private static final String FAIL_METRIC = com.sfi.scaffold.common.constant.MetricsNames.LOGIN_FAILURES;
 
     private final StringRedisTemplate redisTemplate;
     private final SecurityProperties.PasswordPolicy policy;
     private final TokenProperties.IpGuard ipGuard;
-    /** 指标门面（条件装配绑定 micrometer 或 noop，隔离类加载） */
-    private final CounterMetrics counterMetrics;
 
     public LoginFailureGuard(StringRedisTemplate redisTemplate,
                              SecurityProperties.PasswordPolicy policy) {
-        this(redisTemplate, policy, null, null);
+        this(redisTemplate, policy, null);
     }
 
     public LoginFailureGuard(StringRedisTemplate redisTemplate,
                              SecurityProperties.PasswordPolicy policy,
                              TokenProperties.IpGuard ipGuard) {
-        this(redisTemplate, policy, ipGuard, CounterMetrics.NOOP);
-    }
-
-    public LoginFailureGuard(StringRedisTemplate redisTemplate,
-                             SecurityProperties.PasswordPolicy policy,
-                             TokenProperties.IpGuard ipGuard,
-                             CounterMetrics counterMetrics) {
         this.redisTemplate = redisTemplate;
         this.policy = policy;
         this.ipGuard = ipGuard != null ? ipGuard : new TokenProperties.IpGuard();
-        this.counterMetrics = counterMetrics;
     }
 
     /** 账号是否已被临时锁定 */
@@ -72,7 +57,6 @@ public class LoginFailureGuard {
         if (count != null && count == 1L) {
             redisTemplate.expire(key(accountNo), Duration.ofSeconds(policy.getLockSeconds()));
         }
-        recordMetric("account");
         return count == null ? 0 : count.intValue();
     }
 
@@ -99,13 +83,7 @@ public class LoginFailureGuard {
         if (count != null && count == 1L) {
             redisTemplate.expire(ipKey(ip), Duration.ofSeconds(ipGuard.getWindowSeconds()));
         }
-        recordMetric("ip");
         return count == null ? 0 : count;
-    }
-
-    /** 登录失败指标上报（micrometer 在场时打点，否则 noop 静默） */
-    private void recordMetric(String dimension) {
-        counterMetrics.increment(FAIL_METRIC, "dimension", dimension);
     }
 
     private String key(String accountNo) {

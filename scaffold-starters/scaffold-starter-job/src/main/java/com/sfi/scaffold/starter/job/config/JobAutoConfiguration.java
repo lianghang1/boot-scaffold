@@ -2,11 +2,9 @@ package com.sfi.scaffold.starter.job.config;
 
 import com.sfi.scaffold.starter.job.JobConfigProvider;
 import com.sfi.scaffold.starter.job.JobExecutor;
-import com.sfi.scaffold.starter.job.JobMetrics;
 import com.sfi.scaffold.starter.job.JobRunLogSink;
 import com.sfi.scaffold.starter.protection.lock.RedisLockUtil;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -16,7 +14,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.TaskScheduler;
-import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 计划任务自动装配（极简引擎）。
@@ -63,9 +60,8 @@ public class JobAutoConfiguration {
     /** 双引擎共用执行包装：无条件注册——engine=none（PowerJob 接管调度）时同样需要 */
     @Bean
     public JobExecutor jobExecutor(ObjectProvider<JobRunLogSink> runLogSink,
-                                   ObjectProvider<RedisLockUtil> lockUtil,
-                                   JobMetrics jobMetrics) {
-        return new JobExecutor(runLogSink.getIfAvailable(), lockUtil.getIfAvailable(), jobMetrics);
+                                   ObjectProvider<RedisLockUtil> lockUtil) {
+        return new JobExecutor(runLogSink.getIfAvailable(), lockUtil.getIfAvailable());
     }
 
     @Bean
@@ -79,27 +75,5 @@ public class JobAutoConfiguration {
         }
         return new JobRegistrar(applicationContext, environment, taskScheduler,
                 configProvider.getIfAvailable(), jobExecutor);
-    }
-
-    /** micrometer 在场时绑定真实打点；嵌套类经 ASM 元数据判定条件，类加载安全 */
-    @Configuration(proxyBeanMethods = false)
-    @ConditionalOnClass(name = "io.micrometer.core.instrument.MeterRegistry")
-    static class MicrometerJobMetricsConfiguration {
-
-        @Bean
-        JobMetrics micrometerJobMetrics(ObjectProvider<io.micrometer.core.instrument.MeterRegistry> registry) {
-            return new com.sfi.scaffold.starter.job.MicrometerJobMetrics(registry.getIfAvailable());
-        }
-    }
-
-    /** 兜底空实现：micrometer 不在场（纯 job 形态）时埋点静默 */
-    @Configuration(proxyBeanMethods = false)
-    @ConditionalOnMissingBean(JobMetrics.class)
-    static class DefaultJobMetricsConfiguration {
-
-        @Bean
-        JobMetrics noopJobMetrics() {
-            return JobMetrics.NOOP;
-        }
     }
 }

@@ -34,7 +34,6 @@
         <module>scaffold-starter-powerjob</module>
         <module>scaffold-starter-push</module>
         <module>scaffold-starter-ws</module>
-        <module>scaffold-starter-observability</module>
         <module>scaffold-starter-test</module>
     </modules>
 </project>

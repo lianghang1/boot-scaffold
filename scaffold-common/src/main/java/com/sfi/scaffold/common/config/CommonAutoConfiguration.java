@@ -32,8 +32,7 @@ public class CommonAutoConfiguration {
     /**
      * 启动就绪报告：打印生效形态的关键装配项。
      *
-     * <p>排查「配置没生效」的第一入口；更完整的条件评估
-     * （哪个自动装配命中/未命中、原因）看 {@code /actuator/conditions}。</p>
+     * <p>排查「配置没生效」的第一入口。</p>
      */
     @Bean
     public ApplicationListener<ApplicationReadyEvent> scaffoldStartupReport() {
@@ -49,7 +48,7 @@ public class CommonAutoConfiguration {
             reportIfPresent(log, env, "scaffold.push.enabled", "SSE 推送");
             reportIfPresent(log, env, "scaffold.ws.enabled", "WebSocket");
             reportIfPresent(log, env, "scaffold.data.worker-id", "雪花 worker-id");
-            log.info("[scaffold] 条件装配明细见 /actuator/conditions；配置项总表见 README");
+            log.info("[scaffold] 配置项总表见 README");
         };
     }
 

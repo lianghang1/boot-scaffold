@@ -1,17 +1,14 @@
 package com.sfi.scaffold.starter.security.token.config;
 
-import com.sfi.scaffold.common.metrics.CounterMetrics;
 import com.sfi.scaffold.starter.security.security.ScaffoldSecurityCustomizer;
 import com.sfi.scaffold.starter.security.token.RedisTokenService;
 import com.sfi.scaffold.starter.security.token.TokenService;
 import com.sfi.scaffold.starter.security.token.filter.TokenAuthenticationFilter;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -45,11 +42,10 @@ public class TokenAutoConfiguration {
     public com.sfi.scaffold.starter.security.policy.LoginFailureGuard loginFailureGuard(
             StringRedisTemplate redisTemplate,
             com.sfi.scaffold.starter.security.config.SecurityProperties securityProperties,
-            TokenProperties tokenProperties,
-            ObjectProvider<CounterMetrics> counterMetrics) {
+            TokenProperties tokenProperties) {
         return new com.sfi.scaffold.starter.security.policy.LoginFailureGuard(
                 redisTemplate, securityProperties.getPasswordPolicy(),
-                tokenProperties.getIpGuard(), counterMetrics.getIfAvailable());
+                tokenProperties.getIpGuard());
     }
 
     /** 图形验证码（Hutool + Redis 一次性），登录防机器撞库 */
@@ -72,27 +68,5 @@ public class TokenAutoConfiguration {
                         UsernamePasswordAuthenticationFilter.class);
             }
         };
-    }
-
-    /** micrometer 在场时绑定真实打点；嵌套类经 ASM 元数据判定条件，类加载安全 */
-    @Configuration(proxyBeanMethods = false)
-    @ConditionalOnClass(name = "io.micrometer.core.instrument.MeterRegistry")
-    static class MicrometerCounterMetricsConfiguration {
-
-        @Bean
-        CounterMetrics micrometerCounterMetrics(ObjectProvider<io.micrometer.core.instrument.MeterRegistry> registry) {
-            return new com.sfi.scaffold.common.metrics.MicrometerCounterMetrics(registry.getIfAvailable());
-        }
-    }
-
-    /** 兜底空实现：micrometer 不在场时静默 */
-    @Configuration(proxyBeanMethods = false)
-    @ConditionalOnMissingBean(CounterMetrics.class)
-    static class DefaultCounterMetricsConfiguration {
-
-        @Bean
-        CounterMetrics noopCounterMetrics() {
-            return CounterMetrics.NOOP;
-        }
     }
 }
