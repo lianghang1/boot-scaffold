@@ -21,7 +21,6 @@
         <spring-boot.version>2.7.18</spring-boot.version>
         <nexus.releases>http://maven.sfitech.cn:8088/nexus/content/repositories/releases</nexus.releases>
         <nexus.snapshots>http://maven.sfitech.cn:8088/nexus/content/repositories/snapshots</nexus.snapshots>
-        <knife4j.version>4.4.0</knife4j.version>
         <ttl.version>2.14.5</ttl.version>
         <bcprov.version>1.78.1</bcprov.version>
         <powerjob.version>4.3.9</powerjob.version>
@@ -174,13 +173,6 @@
                 <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
-
-            <!-- 接口文档 -->
-            <dependency>
-                <groupId>com.github.xiaoymin</groupId>
-                <artifactId>knife4j-openapi3-spring-boot-starter</artifactId>
-                <version>${knife4j.version}</version>
             </dependency>
 
             <!-- 上下文传递（批次③启用，版本先行锁定） -->

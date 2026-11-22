@@ -13,7 +13,7 @@
     <artifactId>scaffold-starter-web</artifactId>
     <packaging>jar</packaging>
     <name>scaffold-starter-web</name>
-    <description>Web 封装：traceId 全链路 / 统一响应与全局异常 / 访问日志 / Jackson / CORS / 接口文档</description>
+    <description>Web 封装：traceId 全链路 / 统一响应与全局异常 / 访问日志 / Jackson / CORS</description>
 
     <dependencies>
         <dependency>

@@ -32,7 +32,7 @@ import java.util.TimeZone;
 /**
  * 全工程唯一的 JSON 共享工具：全局单例 {@link ObjectMapper}。
  *
- * <p>业务代码与框架内部（Redis 会话、openapi 签名、缓存、日志切面）统一使用
+ * <p>业务代码与框架内部（Redis 会话、缓存、日志切面）统一使用
  * 同一套 JSON 语义，各处不再自行 new/configure ObjectMapper，避免日期格式、
  * 容错行为不一致引发的隐性 bug。</p>
  *

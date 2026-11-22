@@ -22,7 +22,7 @@ public final class IpUtils {
     private IpUtils() {
     }
 
-    /** 从请求解析客户端真实 IP（登录日志、操作日志、openapi 审计共用）。 */
+    /** 从请求解析客户端真实 IP（登录日志、操作日志共用）。 */
     public static String clientIp(HttpServletRequest request) {
         return resolve(request.getHeader(HEADER_X_FORWARDED_FOR),
                 request.getHeader(HEADER_X_REAL_IP),
