@@ -19,6 +19,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-boot.version>2.7.18</spring-boot.version>
+        <!-- Conflux 三方能力门面（auth/file/pay）版本，随 conflux 仓库 BOM 单源升级 -->
+        <conflux.version>1.0.0-SNAPSHOT</conflux.version>
         <nexus.releases>http://maven.sfitech.cn:8088/nexus/content/repositories/releases</nexus.releases>
         <nexus.snapshots>http://maven.sfitech.cn:8088/nexus/content/repositories/snapshots</nexus.snapshots>
         <ttl.version>2.14.5</ttl.version>
@@ -160,13 +162,87 @@
                 <artifactId>scaffold-starter-test</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <!-- Spring Boot 官方 BOM -->
+            <!-- Conflux 三方能力桥接 starter（framework 层收口，matrix 只写业务 SPI） -->
+            <dependency>
+                <groupId>com.sfi.scaffold</groupId>
+                <artifactId>scaffold-starter-conflux-auth</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sfi.scaffold</groupId>
+                <artifactId>scaffold-starter-conflux-file</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sfi.scaffold</groupId>
+                <artifactId>scaffold-starter-conflux-pay</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <!-- Spring Boot 官方 BOM（先声明，保证其版本优先于后导入的 conflux BOM） -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <!-- Conflux 三方能力门面 BOM：auth/file/pay 桥接 starter 的版本由 conflux 单源管理。
+                 spring-boot-dependencies 先声明，确保 okhttp 等共享件版本以本 BOM 为准。 -->
+            <dependency>
+                <groupId>com.sfi.conflux</groupId>
+                <artifactId>conflux-dependencies</artifactId>
+                <version>${conflux.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Conflux 自产构件版本：conflux-dependencies BOM 只管第三方 SDK，
+                 conflux 自身构件留在使用方 BOM 管理，此处统一钉到 ${conflux.version}。 -->
+            <dependency>
+                <groupId>com.sfi.conflux</groupId>
+                <artifactId>conflux-common</artifactId>
+                <version>${conflux.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sfi.conflux</groupId>
+                <artifactId>conflux-auth-core</artifactId>
+                <version>${conflux.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sfi.conflux</groupId>
+                <artifactId>conflux-auth-channels</artifactId>
+                <version>${conflux.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sfi.conflux</groupId>
+                <artifactId>conflux-auth-spring-boot-starter</artifactId>
+                <version>${conflux.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sfi.conflux</groupId>
+                <artifactId>conflux-file-core</artifactId>
+                <version>${conflux.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sfi.conflux</groupId>
+                <artifactId>conflux-file-spring-boot-starter</artifactId>
+                <version>${conflux.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sfi.conflux</groupId>
+                <artifactId>conflux-pay-core</artifactId>
+                <version>${conflux.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sfi.conflux</groupId>
+                <artifactId>conflux-pay-channels</artifactId>
+                <version>${conflux.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sfi.conflux</groupId>
+                <artifactId>conflux-pay-spring-boot-starter</artifactId>
+                <version>${conflux.version}</version>
             </dependency>
 
             <!-- 上下文传递（批次③启用，版本先行锁定） -->

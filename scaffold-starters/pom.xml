@@ -35,5 +35,9 @@
         <module>scaffold-starter-push</module>
         <module>scaffold-starter-ws</module>
         <module>scaffold-starter-test</module>
+        <!-- Conflux 三方能力桥接（framework 收口，matrix 只写业务 SPI） -->
+        <module>scaffold-starter-conflux-auth</module>
+        <module>scaffold-starter-conflux-file</module>
+        <module>scaffold-starter-conflux-pay</module>
     </modules>
 </project>
