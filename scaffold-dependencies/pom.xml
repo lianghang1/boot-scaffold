@@ -162,22 +162,6 @@
                 <artifactId>scaffold-starter-test</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <!-- Conflux 三方能力桥接 starter（framework 层收口，matrix 只写业务 SPI） -->
-            <dependency>
-                <groupId>com.sfi.scaffold</groupId>
-                <artifactId>scaffold-starter-conflux-auth</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sfi.scaffold</groupId>
-                <artifactId>scaffold-starter-conflux-file</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sfi.scaffold</groupId>
-                <artifactId>scaffold-starter-conflux-pay</artifactId>
-                <version>${project.version}</version>
-            </dependency>
             <!-- Spring Boot 官方 BOM（先声明，保证其版本优先于后导入的 conflux BOM） -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
@@ -187,8 +171,8 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- Conflux 三方能力门面 BOM：auth/file/pay 桥接 starter 的版本由 conflux 单源管理。
-                 spring-boot-dependencies 先声明，确保 okhttp 等共享件版本以本 BOM 为准。 -->
+            <!-- Conflux 三方能力门面 BOM：业务侧（matrix）直接引入 conflux starter，其版本与三方 SDK
+                 由 conflux 单源管理。spring-boot-dependencies 先声明，确保 okhttp 等共享件版本以本 BOM 为准。 -->
             <dependency>
                 <groupId>com.sfi.conflux</groupId>
                 <artifactId>conflux-dependencies</artifactId>
