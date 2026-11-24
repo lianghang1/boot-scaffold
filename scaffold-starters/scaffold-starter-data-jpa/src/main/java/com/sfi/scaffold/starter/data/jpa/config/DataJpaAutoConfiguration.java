@@ -5,6 +5,8 @@ import com.sfi.scaffold.starter.data.jpa.datachange.DataChangeEventListener;
 import com.sfi.scaffold.starter.data.jpa.datascope.DataScopeAspect;
 import com.sfi.scaffold.starter.data.jpa.id.Snowflake;
 import com.sfi.scaffold.starter.data.jpa.id.SnowflakeIdentifierGenerator;
+import com.sfi.scaffold.starter.data.jpa.logicdelete.FindByIdDeletedAspect;
+import com.sfi.scaffold.starter.data.jpa.logicdelete.JpaDeletedFilterAspect;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -60,6 +62,23 @@ public class DataJpaAutoConfiguration {
     @ConditionalOnMissingBean(DataScopeAspect.class)
     public DataScopeAspect dataScopeAspect(PlatformTransactionManager transactionManager) {
         return new DataScopeAspect(transactionManager);
+    }
+
+    /**
+     * 逻辑删除 jpa 通路切面：Filter 白名单式过滤 + findById 结果兜底，
+     * 与 query 通路的 DeletedParamFilter 共同实现两通路口径一致。
+     * 需逻辑删除的实体自行声明 deleted 字段并标注 @Filter 即自动生效。
+     */
+    @Bean
+    @ConditionalOnMissingBean(JpaDeletedFilterAspect.class)
+    public JpaDeletedFilterAspect jpaDeletedFilterAspect(PlatformTransactionManager transactionManager) {
+        return new JpaDeletedFilterAspect(transactionManager);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(FindByIdDeletedAspect.class)
+    public FindByIdDeletedAspect findByIdDeletedAspect() {
+        return new FindByIdDeletedAspect();
     }
 
     /**

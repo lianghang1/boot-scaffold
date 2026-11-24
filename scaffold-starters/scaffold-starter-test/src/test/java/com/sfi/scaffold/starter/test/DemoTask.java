@@ -16,11 +16,21 @@ public class DemoTask extends BaseEntity {
 
     private String title;
 
+    private Boolean deleted = Boolean.FALSE;
+
     public String getTitle() {
         return title;
     }
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public Boolean getDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(Boolean deleted) {
+        this.deleted = deleted;
     }
 }

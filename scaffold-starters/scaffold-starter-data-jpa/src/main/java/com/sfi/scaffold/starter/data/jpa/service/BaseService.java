@@ -7,6 +7,7 @@ import com.sfi.scaffold.common.result.PageResult;
 import com.sfi.scaffold.query.QueryUtilsX;
 import com.sfi.scaffold.query.filter.QueryFilterX;
 import com.sfi.scaffold.starter.data.jpa.entity.BaseEntity;
+import com.sfi.scaffold.starter.data.jpa.logicdelete.DeletedFieldAccessor;
 import org.springframework.core.ResolvableType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,10 +23,11 @@ import java.util.List;
 /**
  * 通用 CRUD 服务基类。
  *
- * <p>收口所有 {@link BaseEntity} 子类共享的骨架：按 id 查询（过滤逻辑删除、
- * 查不到返回 null）、存在性判定、列表/分页/计数、逻辑删除。业务差异（加密、
- * 平台兜底、唯一键校验）由子类覆盖或另起方法——基类只保证「每张表都要写的
- * 那几行」只写一次。</p>
+ * <p>收口所有 {@link BaseEntity} 子类共享的骨架：按 id 查询（查不到返回 null）、
+ * 存在性判定、列表/分页/计数、逻辑删除。逻辑删除/租户的查询过滤统一由切面按
+ * 字段名探测自动拼接，基类不硬编码这些字段；写侧按字段名反射打删除标记。
+ * 业务差异（加密、平台兜底、唯一键校验）由子类覆盖或另起方法——基类只保证
+ * 「每张表都要写的那几行」只写一次。</p>
  *
  * <p><b>泛型与 Repository 对齐</b>：所有实体主键为 Long（{@link BaseEntity}），
  * Repository 类型固定 {@code JpaRepository<E, Long>}，子类构造时把具体 Repository
@@ -79,13 +81,15 @@ public abstract class BaseService<E extends BaseEntity> {
 
     /**
      * 按 id 查询，自动过滤逻辑删除记录；不存在返回 null（唯一公共查询入口，不抛异常）。
+     * deleted 字段由实体自行声明，此处按字段名反射探测（非 BaseEntity 硬编码），
+     * 与 findById 切面、query 过滤器三处口径一致，形成双保险。
      */
     public E get(Long id) {
         if (id == null) {
             return null;
         }
         return repository.findById(id)
-                .filter(e -> !Boolean.TRUE.equals(e.getDeleted()))
+                .filter(e -> !DeletedFieldAccessor.isDeleted(e))
                 .orElse(null);
     }
 
@@ -113,12 +117,13 @@ public abstract class BaseService<E extends BaseEntity> {
     }
 
     /**
-     * 逻辑删除：标记 deleted + 保存，不物理删除。不存在抛 NOT_FOUND。
+     * 逻辑删除：按字段名反射打 deleted 标记 + 保存，不物理删除。不存在抛 NOT_FOUND。
+     * 字段由实体自行声明（非 BaseEntity），反射写入与租户的字段探测同构。
      */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         E entity = require(id);
-        entity.markDeleted();
+        DeletedFieldAccessor.markDeleted(entity);
         repository.save(entity);
     }
 

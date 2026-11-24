@@ -26,12 +26,15 @@ import java.time.LocalDateTime;
  * 来源为 {@code LoginContext} 当前账户，{@code createTime/updateTime} 由
  * Auditing 自动写入，业务代码无需手工赋值。</p>
  *
- * <p>删除一律走 {@code deleted} 标记的逻辑删除，不做物理 delete，查询时
- * 须由 Repository 层按约定过滤。需要乐观锁的实体请继承 {@link VersionedEntity}。</p>
+ * <p>本类不含租户字段与逻辑删除字段——这两者都不是每张表都有，统一由需要的
+ * 实体自行声明（按固定字段名 {@code tenantId} / {@code deleted} 探测），框架
+ * 跨 jpa/query 两条通路自动拼接过滤条件。需要乐观锁的实体请继承 {@link VersionedEntity}。</p>
  *
- * <p>本类同时注册数据权限的 Hibernate FilterDef（PU 全局生效，声明处仅此一处）：
+ * <p>本类同时注册数据权限等 Hibernate FilterDef（PU 全局生效，声明处仅此一处）：
  * 实体类标注 {@code @Filter(name = DataScopeAspect.FILTER_SELF)} 即加入「仅本人」
- * 过滤白名单，配合服务方法的 {@code @DataScope(SELF)} 注解按 create_by 过滤。</p>
+ * 过滤白名单，配合服务方法的 {@code @DataScope(SELF)} 注解按 create_by 过滤。
+ * 逻辑删除同理：需要逻辑删除的实体声明 {@code deleted} 字段并标注
+ * {@code @Filter(name = JpaDeletedFilterAspect.FILTER_NAME, condition = "deleted = false")}。</p>
  *
  * @author lianghang
  */
@@ -49,7 +52,11 @@ import java.time.LocalDateTime;
         // 不带 defaultCondition——列名由各实体 @Filter condition 声明（默认列 tenant_id），
         // 避免在此写死列名导致自定义列的实体无法覆盖
         @FilterDef(name = "scaffold_tenant",
-                parameters = @ParamDef(name = "tenantId", type = "string"))
+                parameters = @ParamDef(name = "tenantId", type = "string")),
+        // 逻辑删除 FilterDef（data-jpa 在场时由 JpaDeletedFilterAspect 启用）：
+        // 条件固定，由各实体 @Filter condition 声明（默认 deleted = false），
+        // 无参数——只有含 deleted 字段且标注 @Filter 的实体才加入过滤白名单
+        @FilterDef(name = "scaffold_deleted")
 })
 public abstract class BaseEntity {
 
@@ -73,15 +80,6 @@ public abstract class BaseEntity {
     @LastModifiedBy
     @Column(name = "update_by", length = 64)
     private String updateBy;
-
-    /** 逻辑删除：true=已删除；查询规约由 Repository 层约定兜底。 */
-    @Column(name = "deleted", nullable = false)
-    private Boolean deleted = Boolean.FALSE;
-
-    /** 标记本实体已逻辑删除（不物理 delete）。 */
-    public void markDeleted() {
-        this.deleted = Boolean.TRUE;
-    }
 
     public Long getId() {
         return id;
@@ -121,13 +119,5 @@ public abstract class BaseEntity {
 
     public void setUpdateBy(String updateBy) {
         this.updateBy = updateBy;
-    }
-
-    public Boolean getDeleted() {
-        return deleted;
-    }
-
-    public void setDeleted(Boolean deleted) {
-        this.deleted = deleted;
     }
 }
