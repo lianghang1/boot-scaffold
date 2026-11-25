@@ -7,6 +7,7 @@ import com.sfi.scaffold.common.datascope.DataScopeKeys;
 import com.sfi.scaffold.common.exception.BizException;
 import com.sfi.scaffold.common.exception.GlobalErrorCode;
 import com.sfi.scaffold.common.util.JsonUtils;
+import com.sfi.scaffold.starter.data.jpa.audit.ScaffoldAuditorHolder;
 import org.springframework.util.ClassUtils;
 
 /**
@@ -44,9 +45,40 @@ public final class LoginContext {
         return HOLDER.get();
     }
 
+    /**
+     * 获取当前登录用户账号 ID；未登录抛 1001 未认证
+     * @return 账号 ID
+     */
     public static Long currentAccountId() {
         LoginUser user = current();
         return user.getAccountId();
+    }
+
+    /**
+     * 获取当前登录用户账号 ID；匿名场景（/online）返回 null
+     * @return 账号 ID
+     */
+    public static Long currentAccountIdOrNull() {
+        LoginUser user = currentOrNull();
+        return user == null ? null : user.getAccountId();
+    }
+
+    /**
+     * 获取当前登录用户租户 ID；未登录抛 1001 未认证
+     * @return 租户 ID
+     */
+    public static String currentTenantId() {
+        LoginUser user = current();
+        return user.getTenantId();
+    }
+
+    /**
+     * 获取当前登录用户租户 ID；匿名场景（/online）返回 null
+     * @return 租户 ID
+     */
+    public static String currentTenantIdOrNull() {
+        LoginUser user = currentOrNull();
+        return user == null ? null : user.getTenantId();
     }
 
     public static void set(LoginUser user) {
@@ -64,13 +96,13 @@ public final class LoginContext {
     /** 同步审计人（data-jpa 在场时 createBy/updateBy 自动填充）；JPA 缺席时静默跳过 */
     private static void syncAuditor(LoginUser user) {
         if (AUDITOR_PRESENT) {
-            com.sfi.scaffold.starter.data.jpa.audit.ScaffoldAuditorHolder.set(String.valueOf(user.getAccountId()));
+            ScaffoldAuditorHolder.set(String.valueOf(user.getAccountId()));
         }
     }
 
     private static void clearAuditor() {
         if (AUDITOR_PRESENT) {
-            com.sfi.scaffold.starter.data.jpa.audit.ScaffoldAuditorHolder.clear();
+            ScaffoldAuditorHolder.clear();
         }
     }
 
