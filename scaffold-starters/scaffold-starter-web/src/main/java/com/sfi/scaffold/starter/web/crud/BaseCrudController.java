@@ -94,10 +94,11 @@ public abstract class BaseCrudController<E extends BaseEntity, D, S extends Base
         return rewriteList(result);
     }
 
-    /** 详情：逻辑删除过滤由 BaseService 保证，查不到返回 null。 */
+    /** 详情：逻辑删除过滤由 BaseService 保证，查不到返回 null。返回 R<?> 以便子类经 detailOf 转 VO。 */
     @GetMapping("/get")
-    public R<E> get(@RequestParam Long id) {
-        return R.ok(service.get(id));
+    public R<?> get(@RequestParam Long id) {
+        E entity = service.get(id);
+        return R.ok(entity == null ? null : detailOf(entity));
     }
 
     /** 新增/修改：DTO → 实体 → 通用 save；业务差异在 Service 子类覆盖。 */
@@ -134,6 +135,11 @@ public abstract class BaseCrudController<E extends BaseEntity, D, S extends Base
     /** DTO → 实体；子类可覆盖做字段级装配。 */
     protected E toEntity(D dto) {
         return JsonUtils.convertValue(dto, entityClass);
+    }
+
+    /** 详情出口转换；默认原样返回实体，子类可覆盖成 VO（如敏感字段加密）。 */
+    protected Object detailOf(E entity) {
+        return entity;
     }
 
     /** 删除前钩子；默认空实现。 */
