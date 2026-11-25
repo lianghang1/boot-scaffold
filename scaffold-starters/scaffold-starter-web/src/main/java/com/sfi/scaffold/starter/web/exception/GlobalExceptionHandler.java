@@ -27,7 +27,8 @@ import javax.validation.ConstraintViolationException;
  * <ul>
  *   <li>业务异常（BizException）只打 warn——它是可预期的业务失败，打 error 会淹没告警；</li>
  *   <li>未知异常打 error（自动带 MDC traceId）并向外隐藏堆栈细节；</li>
- *   <li>HTTP 状态码与业务码双轨一致：ErrorCode 未指定 httpStatus 时返回 200，认证/权限类返回 401/403。</li>
+ *   <li>HTTP 状态码恒为 200：错误语义由响应体 {@code R.code} 表达（ErrorCode.getCode()），
+ *       ErrorCode 携带的 httpStatus 仅作业务侧参考，不写入 HTTP 响应状态。</li>
  * </ul>
  *
  * @author lianghang
@@ -92,7 +93,7 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<R<Void>> build(ErrorCode ec, String customMessage) {
         String message = StringUtils.defaultIfEmpty(customMessage, ec.getMessage());
-        int httpStatus = ec.getHttpStatus() == -1 ? 200 : ec.getHttpStatus();
-        return ResponseEntity.status(httpStatus).body(R.fail(ec, message));
+        // HTTP 恒 200，错误语义只在响应体 R.code 表达；不用 ec.getHttpStatus()
+        return ResponseEntity.ok(R.fail(ec, message));
     }
 }
