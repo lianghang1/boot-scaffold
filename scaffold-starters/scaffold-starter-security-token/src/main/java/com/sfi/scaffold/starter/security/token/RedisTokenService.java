@@ -55,7 +55,7 @@ public class RedisTokenService implements TokenService {
             redisTemplate.opsForValue().set(TOKEN_KEY + token,
                     objectMapper.writeValueAsString(session), Duration.ofSeconds(ttlSeconds));
             redisTemplate.opsForSet().add(ACCOUNT_KEY + session.getAccountId(), token);
-            log.info("[auth] 会话创建: accountId={} device={}", session.getAccountId(), session.getDevice());
+            log.info("[auth] 会话创建: accountId={} source={} deviceId={}", session.getAccountId(), session.getSource(), session.getDeviceId());
         } catch (Exception e) {
             throw new IllegalStateException("会话写入 Redis 失败", e);
         }
@@ -127,21 +127,26 @@ public class RedisTokenService implements TokenService {
 
     @Override
     public List<SessionInfo> onlineSessions(Long accountId) {
+        return new ArrayList<>(onlineSessionTokens(accountId).values());
+    }
+
+    @Override
+    public Map<String, SessionInfo> onlineSessionTokens(Long accountId) {
         Set<String> tokens = redisTemplate.opsForSet().members(ACCOUNT_KEY + accountId);
-        List<SessionInfo> sessions = new ArrayList<>();
-        if (tokens == null) {
-            return sessions;
+        Map<String, SessionInfo> result = new LinkedHashMap<>();
+        if (tokens == null || tokens.isEmpty()) {
+            return result;
         }
         for (String t : tokens) {
             SessionInfo s = resolve(t);
             if (s != null) {
-                sessions.add(s);
+                result.put(t, s);
             } else {
                 // 清理过期残留索引
                 redisTemplate.opsForSet().remove(ACCOUNT_KEY + accountId, t);
             }
         }
-        return sessions;
+        return result;
     }
 
     @Override

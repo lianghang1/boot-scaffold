@@ -17,7 +17,7 @@ public interface TokenService {
      * 创建会话并返回 token。
      *
      * @param session      会话内容
-     * @param exclusive    同端互斥：true 时该账户同 device 的旧会话全部下线
+     * @param exclusive    同端互斥：true 时该账户同 source 的旧会话全部下线
      */
     String create(SessionInfo session, boolean exclusive);
 
@@ -33,8 +33,11 @@ public interface TokenService {
     /** 踢人：使某账户所有会话立即失效（改密/封禁场景） */
     void revokeAll(Long accountId);
 
-    /** 某账户剩余有效 token（在线用户管理用） */
+    /** 某账户剩余有效会话（在线用户管理用） */
     List<SessionInfo> onlineSessions(Long accountId);
+
+    /** 某账户剩余有效会话（token → 会话），供按 deviceId 精确踢人；顺带清理过期索引 */
+    Map<String, SessionInfo> onlineSessionTokens(Long accountId);
 
     /**
      * 全部在线会话（token → 会话内容），在线用户管理列表用。

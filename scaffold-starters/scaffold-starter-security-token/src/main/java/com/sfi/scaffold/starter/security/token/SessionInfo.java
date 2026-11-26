@@ -33,7 +33,11 @@ public class SessionInfo implements Serializable {
 
     private Set<String> permissions = Collections.emptySet();
 
-    private String device;
+    /** 登录来源/接入端类型，如 internal / online / app:{accountNo} */
+    private String source;
+
+    /** 物理设备标识：客户端 X-Device-Id，多点登录按此维度管控 */
+    private String deviceId;
 
     /** 租户 ID（null = 平台身份），随会话存取，与 LoginUser.tenantId 同源透传 */
     private String tenantId;
@@ -52,7 +56,8 @@ public class SessionInfo implements Serializable {
         s.displayName = user.getDisplayName();
         s.roles = user.getRoles();
         s.permissions = user.getPermissions();
-        s.device = user.getDevice();
+        s.source = user.getSource();
+        s.deviceId = user.getDeviceId();
         s.tenantId = user.getTenantId();
         s.attributes = user.getAttributes() == null ? Collections.emptyMap() : user.getAttributes();
         s.loginTime = System.currentTimeMillis();
@@ -67,7 +72,8 @@ public class SessionInfo implements Serializable {
         u.setDisplayName(displayName);
         u.setRoles(roles);
         u.setPermissions(permissions);
-        u.setDevice(device);
+        u.setSource(source);
+        u.setDeviceId(deviceId);
         u.setTenantId(tenantId);
         u.setAttributes(attributes);
         return u;
@@ -121,12 +127,20 @@ public class SessionInfo implements Serializable {
         this.permissions = permissions;
     }
 
-    public String getDevice() {
-        return device;
+    public String getSource() {
+        return source;
     }
 
-    public void setDevice(String device) {
-        this.device = device;
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 
     public String getTenantId() {

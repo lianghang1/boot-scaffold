@@ -58,7 +58,7 @@ class RedisTokenServiceTest {
         SessionInfo s = new SessionInfo();
         s.setAccountId(1L);
         s.setAccountNo("alice");
-        s.setDevice("web");
+        s.setSource("web");
         return s;
     }
 
@@ -124,7 +124,7 @@ class RedisTokenServiceTest {
         LoginUser user = new LoginUser();
         user.setAccountId(1L);
         user.setAccountNo("alice");
-        user.setDevice("web");
+        user.setSource("web");
         user.getAttributes().put("deptId", "88");
         when(valueOps.get(anyString())).thenReturn(objectMapper.writeValueAsString(SessionInfo.from(user)));
         LoginUser rebuilt = service.resolve("tok").toLoginUser();

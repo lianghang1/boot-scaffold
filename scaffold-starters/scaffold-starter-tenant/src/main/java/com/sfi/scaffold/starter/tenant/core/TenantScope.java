@@ -71,7 +71,8 @@ public final class TenantScope {
         scoped.setDisplayName(source.getDisplayName());
         scoped.setRoles(source.getRoles());
         scoped.setPermissions(source.getPermissions());
-        scoped.setDevice(source.getDevice());
+        scoped.setSource(source.getSource());
+        scoped.setDeviceId(source.getDeviceId());
         scoped.setTenantId(tenantId);
         scoped.setAttributes(source.getAttributes());
         return scoped;
@@ -85,7 +86,7 @@ public final class TenantScope {
         user.setAccountType(AccountType.OPERATOR);
         user.setDisplayName("tenant-scope:" + (tenantId == null ? "platform" : tenantId));
         user.setPermissions(Collections.emptySet());
-        user.setDevice("tenant-scope");
+        user.setSource("tenant-scope");
         user.setTenantId(tenantId);
         return user;
     }

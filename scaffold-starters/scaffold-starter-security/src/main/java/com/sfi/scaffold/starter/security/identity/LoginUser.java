@@ -32,8 +32,11 @@ public class LoginUser implements Serializable {
 
     private Set<String> permissions = Collections.emptySet();
 
-    /** 登录设备/来源：由认证阶段填入，如 internal / online / app:{accountNo} */
-    private String device;
+    /** 登录来源/接入端类型：由认证阶段填入，如 internal / online / app:{accountNo} */
+    private String source;
+
+    /** 物理设备标识：客户端 X-Device-Id，多点登录按此维度管控 */
+    private String deviceId;
 
     /**
      * 租户 ID（null = 平台身份，租户过滤全放行）。
@@ -72,7 +75,7 @@ public class LoginUser implements Serializable {
         user.setAccountType(AccountType.OPERATOR);
         user.setDisplayName("system:" + (operator == null ? "task" : operator));
         user.setPermissions(Collections.singleton("*"));
-        user.setDevice("job");
+        user.setSource("job");
         return user;
     }
 
@@ -149,12 +152,20 @@ public class LoginUser implements Serializable {
         this.permissions = permissions;
     }
 
-    public String getDevice() {
-        return device;
+    public String getSource() {
+        return source;
     }
 
-    public void setDevice(String device) {
-        this.device = device;
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 
     public String getTenantId() {
