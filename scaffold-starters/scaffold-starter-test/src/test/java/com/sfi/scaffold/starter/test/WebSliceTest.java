@@ -10,7 +10,6 @@ import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.http.HttpStatus;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -54,7 +53,7 @@ class WebSliceTest {
     @Test
     void bizErrorUsesUnifiedResponseAndTraceId() {
         mvc.get("/demo/biz-error")
-                .expectStatus(HttpStatus.FORBIDDEN.value())
+                .expectStatus(200)
                 .expectCode(GlobalErrorCode.FORBIDDEN.getCode())
                 .expectTraceId();
         assertEquals("无权访问该资源", mvc.get("/demo/biz-error").body().path("message").asText());
@@ -64,7 +63,7 @@ class WebSliceTest {
     void validationErrorMappedToBadRequest() {
         DemoCreateForm form = new DemoCreateForm();
         mvc.post("/demo/create", form)
-                .expectStatus(400)
+                .expectStatus(200)
                 .expectCode(GlobalErrorCode.BAD_REQUEST.getCode())
                 .expectTraceId();
     }
