@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * starter-web 基线测试，覆盖 traceId 过滤器与全局异常处理的默认行为。
  *
  * <p>基于 MockMvc 独立环境、零外部依赖：验证 traceId 的生成与上游透传复用，
- * 以及业务异常、未知异常的 HTTP 状态码与业务码双轨映射、内部细节隐藏。</p>
+ * 以及业务异常、未知异常的 HTTP 状态码恒 200 与业务码映射、内部细节隐藏。</p>
  *
  * @author lianghang
  */
@@ -107,9 +107,9 @@ public class WebStarterTest {
 
     @Test
     public void bizException_shouldMapToBusinessCode() throws Exception {
-        // FORBIDDEN 带 httpStatus=403：HTTP 状态码与业务码双轨一致
+        // HTTP 恒 200，FORBIDDEN 的业务码 1003 在响应体
         mockMvc.perform(get("/biz-error"))
-                .andExpect(status().is(403))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(1003))
                 .andExpect(jsonPath("$.message").value("演示业务错误"));
     }
@@ -117,18 +117,19 @@ public class WebStarterTest {
     @Test
     public void unknownException_shouldHideDetails() throws Exception {
         mockMvc.perform(get("/system-error"))
-                .andExpect(status().is(500))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(1500))
                 .andExpect(jsonPath("$.message").value(GlobalErrorCode.SYSTEM_ERROR.getMessage()));
     }
 
     @Test
-    public void unauthorized_shouldBeHttp401() {
+    public void unauthorized_shouldBeHttp200WithBizCode() {
         MDC.put("traceId", "t1");
         try {
             GlobalExceptionHandler handler = new GlobalExceptionHandler();
             ResponseEntity<?> response = handler.handleBiz(BizException.of(GlobalErrorCode.UNAUTHORIZED));
-            assertEquals(401, response.getStatusCodeValue());
+            assertEquals(200, response.getStatusCodeValue());
+            assertEquals(1001, ((com.sfi.scaffold.common.result.R<?>) response.getBody()).getCode());
         } finally {
             MDC.remove("traceId");
         }
