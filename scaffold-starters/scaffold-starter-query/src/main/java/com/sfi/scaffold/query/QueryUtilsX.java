@@ -9,6 +9,8 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sfi.scaffold.common.exception.BizException;
 import com.sfi.scaffold.common.exception.GlobalErrorCode;
+import com.sfi.scaffold.common.request.PageParam;
+import com.sfi.scaffold.common.result.PageResult;
 import com.sfi.scaffold.query.config.QueryProperties;
 import com.sfi.scaffold.query.filter.OperatorX;
 import com.sfi.scaffold.query.filter.QueryFilterX;
@@ -20,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
@@ -28,6 +31,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -166,6 +170,38 @@ public final class QueryUtilsX {
 
     public static <T> Page<T> doQuery(List<QueryFilterX> filters, Pageable pageable, Class<T> beanClass) {
         return execute("page-query", beanClass, () -> doQuery0(beanClass, filters, pageable));
+    }
+
+    /**
+     * 分页装配统一入口：1 基 {@link PageParam} → 0 基 {@link Pageable} → {@link #doQuery} → {@link PageResult}。
+     *
+     * <p>把「1 基转 0 基、执行查询、包装统一结果」收口于此，供 {@code BaseService.page} 与
+     * {@code BaseCrudController} 的 plan 分支共用，避免各处复制出行为漂移的分页装配。
+     * pageSize=-1（{@link PageParam#PAGE_SIZE_NONE}）表示不分页。</p>
+     */
+    public static <T> PageResult<T> queryPage(List<QueryFilterX> filters, PageParam pageParam, Class<T> beanClass) {
+        return queryPage(filters, null, pageParam, beanClass);
+    }
+
+    /** 带 orFilters 的分页装配，行为同 {@link #queryPage(List, PageParam, Class)}。 */
+    public static <T> PageResult<T> queryPage(List<QueryFilterX> filters, List<QueryFilterX> orFilters,
+                                              PageParam pageParam, Class<T> beanClass) {
+        PageParam p = pageParam == null ? new PageParam() : pageParam;
+        int pageNum = p.getPageNum() == null || p.getPageNum() < 1 ? 1 : p.getPageNum();
+        int pageSize = p.getPageSize() == null ? 10 : p.getPageSize();
+        Pageable pageable;
+        if (p.isUnpaged()) {
+            pageable = Pageable.unpaged();
+        } else {
+            pageable = PageRequest.of(pageNum - 1, pageSize);
+        }
+        Page<T> result = (orFilters == null || orFilters.isEmpty())
+                ? doQuery(filters, pageable, beanClass)
+                : doQuery(filters, orFilters, pageable, beanClass);
+        long total = result.getTotalElements();
+        long actualSize = pageable.isPaged() ? pageSize : (total == 0 ? 0 : total);
+        List<T> content = result.getContent() == null ? Collections.<T>emptyList() : result.getContent();
+        return PageResult.of(content, total, pageNum, actualSize);
     }
 
     private static <T> Page<T> doQuery0(Class<T> beanClass, List<QueryFilterX> filters, Pageable pageable) {

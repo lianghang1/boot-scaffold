@@ -9,15 +9,11 @@ import com.sfi.scaffold.query.filter.QueryFilterX;
 import com.sfi.scaffold.starter.data.jpa.entity.BaseEntity;
 import com.sfi.scaffold.starter.data.jpa.logicdelete.DeletedFieldAccessor;
 import org.springframework.core.ResolvableType;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ClassUtils;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -148,19 +144,6 @@ public abstract class BaseService<E extends BaseEntity> {
      * 条件分页（1 基，返回统一 {@link PageResult}；pageSize=-1 表示不分页拉全量）。
      */
     public PageResult<E> page(List<QueryFilterX> filters, PageParam pageParam) {
-        PageParam p = pageParam == null ? new PageParam() : pageParam;
-        int pageNum = p.getPageNum() == null || p.getPageNum() < 1 ? 1 : p.getPageNum();
-        int pageSize = p.getPageSize() == null ? 10 : p.getPageSize();
-        Pageable pageable;
-        if (p.isUnpaged()) {
-            pageable = Pageable.unpaged();
-        } else {
-            pageable = PageRequest.of(pageNum - 1, pageSize);
-        }
-        Page<E> result = QueryUtilsX.doQuery(filters, pageable, entityClass());
-        long total = result.getTotalElements();
-        long actualSize = pageable.isPaged() ? pageSize : (total == 0 ? 0 : total);
-        List<E> content = result.getContent() == null ? Collections.<E>emptyList() : result.getContent();
-        return PageResult.of(content, total, pageNum, actualSize);
+        return QueryUtilsX.queryPage(filters, pageParam, entityClass());
     }
 }
