@@ -60,7 +60,7 @@ public final class PageParams {
     /** 按显式页码/页长装配；defaultPageSize 为非法值与缺省时的回落值。 */
     public static PageParam of(int pageNum, int defaultPageSize) {
         PageParam p = new PageParam();
-        p.setPageNum(pageNum < 1 ? 1 : pageNum);
+        p.setPageNum(Math.max(pageNum, 1));
         p.setPageSize(defaultPageSize == PageParam.PAGE_SIZE_NONE || defaultPageSize > 0
                 ? defaultPageSize : DEFAULT_PAGE_SIZE);
         return p;
