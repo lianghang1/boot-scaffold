@@ -10,9 +10,6 @@ import com.sfi.scaffold.query.filter.QueryFilterX;
 import com.sfi.scaffold.starter.data.jpa.entity.BaseEntity;
 import com.sfi.scaffold.starter.data.jpa.service.BaseService;
 import org.springframework.core.ResolvableType;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -77,19 +74,13 @@ public abstract class BaseCrudController<E extends BaseEntity, D, S extends Base
 
     private PageResult<?> doList(String plan, HttpServletRequest request) {
         List<QueryFilterX> filters = filtersOf(request);
-        PageParam page = pageParamOf(request);
+        PageParam page = PageQuerySupport.pageParamOf(request);
         PageResult<?> result;
         if (plan == null || plan.isEmpty()) {
             result = service.page(filters, page);
         } else {
             Class<?> target = QueryUtilsX.resolvePlan(ClassUtils.getUserClass(getClass()), plan);
-            Pageable pageable = page.isUnpaged()
-                    ? Pageable.unpaged()
-                    : PageRequest.of(page.getPageNum() - 1, page.getPageSize());
-            Page<?> paged = QueryUtilsX.doQuery(filters, pageable, target);
-            long total = paged.getTotalElements();
-            long size = pageable.isPaged() ? page.getPageSize() : (total == 0 ? 0 : total);
-            result = PageResult.of(paged.getContent(), total, page.getPageNum(), size);
+            result = PageQuerySupport.query(filters, page, target);
         }
         return rewriteList(result);
     }
@@ -144,36 +135,6 @@ public abstract class BaseCrudController<E extends BaseEntity, D, S extends Base
 
     /** 删除前钩子；默认空实现。 */
     protected void beforeDelete(Long id) {
-    }
-
-    // ==================== 分页参数解析（内部私有） ====================
-
-    /** 从 request 解析 1 基分页参数：pageNum/pageSize（兼容 page/size 别名），pageSize=-1 不分页。 */
-    private PageParam pageParamOf(HttpServletRequest request) {
-        PageParam p = new PageParam();
-        int pageNum = toInt(first(request, "pageNum", "page"), 1);
-        int pageSize = toInt(first(request, "pageSize", "size"), 10);
-        p.setPageNum(pageNum < 1 ? 1 : pageNum);
-        p.setPageSize(pageSize == PageParam.PAGE_SIZE_NONE || pageSize > 0 ? pageSize : 10);
-        return p;
-    }
-
-    private static String first(HttpServletRequest request, String... keys) {
-        for (String key : keys) {
-            String v = request.getParameter(key);
-            if (v != null && !v.isEmpty()) {
-                return v;
-            }
-        }
-        return null;
-    }
-
-    private static int toInt(String v, int def) {
-        try {
-            return v == null || v.isEmpty() ? def : Integer.parseInt(v.trim());
-        } catch (NumberFormatException e) {
-            return def;
-        }
     }
 
     /** 供子类读取自身实体泛型（当前实现实体 Class 由构造器传入，保留此工具备查）。 */
