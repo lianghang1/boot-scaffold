@@ -1,10 +1,10 @@
 package com.sfi.scaffold.starter.web.crud;
 
 import com.sfi.scaffold.common.request.IdRequest;
-import com.sfi.scaffold.common.request.PageParam;
 import com.sfi.scaffold.common.result.PageResult;
 import com.sfi.scaffold.common.result.R;
 import com.sfi.scaffold.common.util.JsonUtils;
+import com.sfi.scaffold.common.util.PageParams;
 import com.sfi.scaffold.query.QueryUtilsX;
 import com.sfi.scaffold.query.filter.QueryFilterX;
 import com.sfi.scaffold.starter.data.jpa.entity.BaseEntity;
@@ -74,13 +74,12 @@ public abstract class BaseCrudController<E extends BaseEntity, D, S extends Base
 
     private PageResult<?> doList(String plan, HttpServletRequest request) {
         List<QueryFilterX> filters = filtersOf(request);
-        PageParam page = pageParamOf(request);
         PageResult<?> result;
         if (plan == null || plan.isEmpty()) {
-            result = service.page(filters, page);
+            result = service.page(filters, PageParams.of(request));
         } else {
             Class<?> target = QueryUtilsX.resolvePlan(ClassUtils.getUserClass(getClass()), plan);
-            result = QueryUtilsX.queryPage(filters, page, target);
+            result = QueryUtilsX.queryPage(filters, PageParams.of(request), target);
         }
         return rewriteList(result);
     }
@@ -104,36 +103,6 @@ public abstract class BaseCrudController<E extends BaseEntity, D, S extends Base
         beforeDelete(req.getId());
         service.delete(req.getId());
         return R.ok();
-    }
-
-    // ==================== 分页参数解析（内部私有） ====================
-
-    /** 从 request 解析 1 基分页参数：pageNum/pageSize（兼容 page/size 别名），pageSize=-1 不分页。 */
-    private PageParam pageParamOf(HttpServletRequest request) {
-        PageParam p = new PageParam();
-        int pageNum = toInt(first(request, "pageNum", "page"), 1);
-        int pageSize = toInt(first(request, "pageSize", "size"), 10);
-        p.setPageNum(pageNum < 1 ? 1 : pageNum);
-        p.setPageSize(pageSize == PageParam.PAGE_SIZE_NONE || pageSize > 0 ? pageSize : 10);
-        return p;
-    }
-
-    private static String first(HttpServletRequest request, String... keys) {
-        for (String key : keys) {
-            String v = request.getParameter(key);
-            if (v != null && !v.isEmpty()) {
-                return v;
-            }
-        }
-        return null;
-    }
-
-    private static int toInt(String v, int def) {
-        try {
-            return v == null || v.isEmpty() ? def : Integer.parseInt(v.trim());
-        } catch (NumberFormatException e) {
-            return def;
-        }
     }
 
     // ==================== 四处可覆盖点 ====================
